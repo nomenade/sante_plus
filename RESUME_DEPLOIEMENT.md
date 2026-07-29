@@ -61,6 +61,18 @@ git push -u origin main
 
 **📖 Guide détaillé :** Consultez `commandes_git.md`
 
+**💡 Exemple concret :**
+```bash
+git config --global user.name "Jean Dupont"
+git config --global user.email "jean.dupont@email.com"
+git init
+git add .
+git commit -m "Initial commit - Santé+ app ready for deployment"
+git remote add origin https://github.com/jean-dupont/sante-plus.git
+git branch -M main
+git push -u origin main
+```
+
 ---
 
 ### Étape 2 : Déployer sur Render (10 minutes)
@@ -105,15 +117,38 @@ git push -u origin main
 
 **📖 Guide détaillé :** Consultez `DEPLOIEMENT.md`
 
+**💡 Exemples concrets d'URLs :**
+
+Si votre backend s'appelle **`sante-plus-backend`** :
+- Backend URL : `https://sante-plus-backend.onrender.com`
+- Frontend VITE_API_URL : `https://sante-plus-backend.onrender.com/api`
+
+Si votre backend s'appelle **`mon-api-sante-w44f`** :
+- Backend URL : `https://mon-api-sante-w44f.onrender.com`
+- Frontend VITE_API_URL : `https://mon-api-sante-w44f.onrender.com/api`
+
+Si votre backend s'appelle **`health-app`** :
+- Backend URL : `https://health-app.onrender.com`
+- Frontend VITE_API_URL : `https://health-app.onrender.com/api`
+
+**⚠️ Important :** Remplacez toujours `sante-plus-backend` par le nom de VOTRE service backend !
+
 ---
 
 ## 🎉 Résultat final
 
 Après ces étapes, votre application sera accessible gratuitement sur :
 
+**Exemple avec des noms personnalisés :**
 - **Frontend :** `https://sante-plus-frontend.onrender.com`
 - **Backend :** `https://sante-plus-backend.onrender.com`
 - **Base de données :** PostgreSQL sur Render
+
+**Avec vos propres noms :**
+- **Frontend :** `https://VOTRE-NOM-FRONTEND.onrender.com`
+- **Backend :** `https://VOTRE-NOM-BACKEND.onrender.com`
+
+**💡 Astuce :** Les noms que vous donnez aux services sur Render deviennent leur URL !
 
 ---
 

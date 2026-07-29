@@ -61,7 +61,7 @@ git push -u origin main
 2. Sélectionnez votre repository `sante-plus`
 3. Configurez le service :
 
-**Nom du service :** `sante-plus-backend`
+**Nom du service :** `sante-plus-backend` (ou votre nom personnalisé)
 
 **Root Directory :** `backend`
 
@@ -84,13 +84,21 @@ gunicorn gunicorn_config.py
 | Variable | Valeur | Description |
 |----------|--------|-------------|
 | `FLASK_DEBUG` | `False` | Désactive le mode debug |
-| `JWT_SECRET_KEY` | `super-secret-health-app-green-2024` | Clé secrète JWT (déjà dans le code) |
+| `JWT_SECRET_KEY` | `super-secret-health-app-green-2024` | Clé secrète JWT |
+
+**⚠️ IMPORTANT :** Notez l'URL de votre service ! Elle sera affichée après le déploiement.
+- Exemple d'URL : `https://sante-plus-backend.onrender.com`
+- **Copiez cette URL** (vous en aurez besoin pour le frontend)
 
 6. Cliquez sur **"Create Web Service"**
 
-7. **Attendez 2-3 minutes** que le déploiement se termine
+7. **Attendez 2-3 minutes** que le déploiement se termine**
 
-8. **Copiez l'URL du service** (ex: `https://sante-plus-backend.onrender.com`)
+**✅ Vérification :** Testez l'URL dans votre navigateur :
+```
+https://votre-nom-backend.onrender.com/api/health
+```
+Vous devriez voir : `{"status": "ok", "message": "Santé+ API is running"}`
 
 ---
 
@@ -142,9 +150,18 @@ npm install && npm run build
 
 | Variable | Valeur | Description |
 |----------|--------|-------------|
-| `VITE_API_URL` | `https://sante-plus-backend.onrender.com/api` | URL de votre backend |
+| `VITE_API_URL` | `https://sante-plus-backend.onrender.com/api` | URL complète de votre API backend |
 
 **⚠️ IMPORTANT :** Remplacez `sante-plus-backend` par le nom de VOTRE service backend !
+
+**Exemples :**
+- Si votre backend s'appelle `sante-plus-backend` : `https://sante-plus-backend.onrender.com/api`
+- Si votre backend s'appelle `mon-api-sante` : `https://mon-api-sante.onrender.com/api`
+- Si votre backend s'appelle `health-app` : `https://health-app.onrender.com/api`
+
+**Format :** `https://NOM-DE-VOTRE-SERVICE.onrender.com/api`
+
+**Ne mettez PAS** `/api/health` à la fin, juste `/api`
 
 5. Cliquez sur **"Create Static Site"**
 
@@ -204,6 +221,11 @@ Ouvrez dans votre navigateur :
 https://votre-backend.onrender.com/api/health
 ```
 
+**Exemple concret :**
+```
+https://sante-plus-backend.onrender.com/api/health
+```
+
 Vous devriez voir :
 ```json
 {
@@ -211,6 +233,8 @@ Vous devriez voir :
   "message": "Santé+ API is running"
 }
 ```
+
+**Si vous voyez cette réponse, votre backend fonctionne ! ✅**
 
 ### Test de l'inscription
 
@@ -241,6 +265,7 @@ Votre application Santé+ est maintenant en ligne et accessible gratuitement !
 3. **Base de données :** PostgreSQL remplace SQLite en production (meilleure performance)
 4. **Sécurité :** Changez le `JWT_SECRET_KEY` pour quelque chose de plus sécurisé en production
 5. **Logs :** Consultez les logs Render pour debugger en cas de problème
+6. **URL du backend :** Notez bien l'URL de votre backend (ex: `https://sante-plus-backend.onrender.com`) pour la configurer dans le frontend
 
 ---
 
