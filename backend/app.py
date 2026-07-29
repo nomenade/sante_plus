@@ -1325,7 +1325,8 @@ disease_advice = {
     }
 }
 
-@app.route('/api/register', methods=['POST'])
+@app.route('/register', methods=['POST', 'OPTIONS'])
+@app.route('/api/register', methods=['POST', 'OPTIONS'])
 def register():
     data = request.get_json()
     email = data.get('email')
@@ -1352,7 +1353,8 @@ def register():
             return jsonify({"error": "Cet email existe déjà."}), 400
         return jsonify({"error": "Erreur lors de la création du compte."}), 400
 
-@app.route('/api/login', methods=['POST'])
+@app.route('/login', methods=['POST', 'OPTIONS'])
+@app.route('/api/login', methods=['POST', 'OPTIONS'])
 def login():
     data = request.get_json()
     email = data.get('email')
@@ -1374,7 +1376,8 @@ def login():
     token = create_access_token(identity=str(user[0]))
     return jsonify({"token": token, "message": "Connexion réussie !"}), 200
 
-@app.route('/api/advice', methods=['POST'])
+@app.route('/advice', methods=['POST', 'OPTIONS'])
+@app.route('/api/advice', methods=['POST', 'OPTIONS'])
 def get_advice():
     data = request.get_json()
     disease = data.get('disease', '').strip().lower()
@@ -1439,7 +1442,8 @@ def get_advice():
         "suggestions": suggestions if suggestions else None
     }), 200
 
-@app.route('/api/health', methods=['GET'])
+@app.route('/health', methods=['GET', 'OPTIONS'])
+@app.route('/api/health', methods=['GET', 'OPTIONS'])
 def health_check():
     return jsonify({"status": "ok", "message": "Santé+ API is running"}), 200
 
