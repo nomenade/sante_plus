@@ -8,8 +8,22 @@ import psycopg2
 from urllib.parse import urlparse
 
 app = Flask(__name__)
-# Permet à toutes les origines (y compris votre frontend Render) d'accéder à l'API
-CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Configuration CORS stricte et explicite
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+# Gestionnaire universel pour répondre 200 OK aux requêtes PREFLIGHT (OPTIONS)
+@app.before_request
+def handle_preflight():
+    from flask import request
+    if request.method == "OPTIONS":
+        response = app.make_default_options_response()
+        headers = response.headers
+        headers['Access-Control-Allow-Origin'] = '*'
+        headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS, PUT, DELETE'
+        headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        return response
+
 bcrypt = Bcrypt(app)
 
 app.config['JWT_SECRET_KEY'] = 'super-secret-health-app-green-2024'
