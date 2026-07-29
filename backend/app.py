@@ -8,7 +8,8 @@ import psycopg2
 from urllib.parse import urlparse
 
 app = Flask(__name__)
-CORS(app)
+# Permet à toutes les origines (y compris votre frontend Render) d'accéder à l'API
+CORS(app, resources={r"/*": {"origins": "*"}})
 bcrypt = Bcrypt(app)
 
 app.config['JWT_SECRET_KEY'] = 'super-secret-health-app-green-2024'
