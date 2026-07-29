@@ -1333,8 +1333,15 @@ def register():
     password = data.get('password')
     if not email or not password:
         return jsonify({"error": "Email et mot de passe requis"}), 400
-    if len(password) < 6:
-        return jsonify({"error": "Le mot de passe doit contenir au moins 6 caractères"}), 400
+    # Validation du mot de passe
+    if len(password) < 8:
+        return jsonify({"error": "Le mot de passe doit contenir au moins 8 caractères"}), 400
+    if not any(char.isupper() for char in password):
+        return jsonify({"error": "Le mot de passe doit contenir au moins une majuscule"}), 400
+    if not any(char.isdigit() for char in password):
+        return jsonify({"error": "Le mot de passe doit contenir au moins un chiffre"}), 400
+    if not any(char in '!@#$%^&*()_+-=[]{}|;:,.<>?' for char in password):
+        return jsonify({"error": "Le mot de passe doit contenir au moins un caractère spécial (!@#$%^&*...)"}), 400
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     try:
         conn = get_db_connection()

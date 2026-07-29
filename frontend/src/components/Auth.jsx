@@ -14,11 +14,30 @@ function Auth({ onLogin }) {
 
   const [successMessage, setSuccessMessage] = useState('');
 
+  const validatePassword = (pwd) => {
+    const errors = [];
+    if (pwd.length < 8) errors.push('au moins 8 caractères');
+    if (!/[A-Z]/.test(pwd)) errors.push('une majuscule');
+    if (!/[0-9]/.test(pwd)) errors.push('un chiffre');
+    if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(pwd)) errors.push('un caractère spécial (!@#$%^&*...)');
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccessMessage('');
     setLoading(true);
+
+    // Validation côté frontend (pour inscription)
+    if (!isLogin) {
+      const passwordErrors = validatePassword(password);
+      if (passwordErrors.length > 0) {
+        setError(`❌ Le mot de passe doit contenir : ${passwordErrors.join(', ')}`);
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       if (isLogin) {
@@ -99,7 +118,7 @@ function Auth({ onLogin }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
               />
               <button
                 type="button"
