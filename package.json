@@ -1,0 +1,13 @@
+{
+  "name": "sante-plus",
+  "private": true,
+  "scripts": {
+    "dev:backend": "python backend/app.py",
+    "dev:frontend": "cd /d d:\\apk_sante\\frontend && node_modules\\.bin\\vite.cmd --host",
+    "dev": "concurrently --names \"API,VITE\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

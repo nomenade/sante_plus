@@ -1,0 +1,63 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #059669 0%, #047857 40%, #065f46 100%);
+  min-height: 100vh;
+  color: #333;
+  transition: background 0.3s ease;
+}
+
+body.dark-mode {
+  background: #0f172a;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Selection styling */
+::selection {
+  background: rgba(5, 150, 105, 0.2);
+  color: #166534;
+}
+
+body.dark-mode ::selection {
+  background: rgba(16, 185, 129, 0.3);
+  color: #86efac;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
