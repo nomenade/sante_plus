@@ -36,13 +36,20 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
-# Configuration CORS restreinte
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
-ALLOWED_ORIGINS = [FRONTEND_URL]
-if os.environ.get('FLASK_DEBUG', 'False').lower() == 'true':
-    ALLOWED_ORIGINS.append('http://localhost:5173')
+# Configuration CORS
+FRONTEND_URL = os.environ.get('FRONTEND_URL')
+if not FRONTEND_URL:
+    FRONTEND_URL = '*'
+    logger.warning("⚠️ FRONTEND_URL non définie ! CORS ouvert à toutes les origines.")
+    logger.warning("   Définissez FRONTEND_URL dans les variables d'environnement Render.")
+    logger.warning("   Exemple: FRONTEND_URL=https://votre-frontend.onrender.com")
+    ALLOWED_ORIGINS = '*'
+else:
+    ALLOWED_ORIGINS = [FRONTEND_URL]
+    if os.environ.get('FLASK_DEBUG', 'False').lower() == 'true':
+        ALLOWED_ORIGINS.append('http://localhost:5173')
 
-CORS(app, resources={r"/api/*": {"origins": ALLOWED_ORIGINS}}, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": ALLOWED_ORIGINS}}, supports_credentials=True)
 
 # Gestionnaire universel pour répondre 200 OK aux requêtes PREFLIGHT (OPTIONS)
 @app.before_request
@@ -51,9 +58,11 @@ def handle_preflight():
     if request.method == "OPTIONS":
         response = app.make_default_options_response()
         headers = response.headers
-        headers['Access-Control-Allow-Origin'] = FRONTEND_URL
+        allowed_origin = FRONTEND_URL if FRONTEND_URL != '*' else request.headers.get('Origin', '*')
+        headers['Access-Control-Allow-Origin'] = allowed_origin
         headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS, PUT, DELETE'
         headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        headers['Access-Control-Max-Age'] = '86400'
         return response
 
 # Headers de sécurité
