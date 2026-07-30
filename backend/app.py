@@ -1,16 +1,48 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
-from flask_jwt_extended import JWTManager, create_access_token
+from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity
 import sqlite3
 import os
 import psycopg2
 from urllib.parse import urlparse
+import re
+import logging
+from datetime import timedelta
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+# Configuration du logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Configuration CORS stricte et explicite
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+# Configuration JWT sécurisée
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev-fallback-key-change-in-production')
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # Token expire après 1h
+jwt = JWTManager(app)
+
+bcrypt = Bcrypt(app)
+
+# Rate Limiting - protection contre les attaques brute force
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
+# Configuration CORS restreinte
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+ALLOWED_ORIGINS = [FRONTEND_URL]
+if os.environ.get('FLASK_DEBUG', 'False').lower() == 'true':
+    ALLOWED_ORIGINS.append('http://localhost:5173')
+
+CORS(app, resources={r"/api/*": {"origins": ALLOWED_ORIGINS}}, supports_credentials=True)
 
 # Gestionnaire universel pour répondre 200 OK aux requêtes PREFLIGHT (OPTIONS)
 @app.before_request
@@ -19,15 +51,20 @@ def handle_preflight():
     if request.method == "OPTIONS":
         response = app.make_default_options_response()
         headers = response.headers
-        headers['Access-Control-Allow-Origin'] = '*'
+        headers['Access-Control-Allow-Origin'] = FRONTEND_URL
         headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS, PUT, DELETE'
         headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
         return response
 
-bcrypt = Bcrypt(app)
-
-app.config['JWT_SECRET_KEY'] = 'super-secret-health-app-green-2024'
-jwt = JWTManager(app)
+# Headers de sécurité
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    return response
 
 # Database configuration - supports both SQLite (dev) and PostgreSQL (prod)
 DB_PATH = os.path.join(os.path.dirname(__file__), 'health.db')
@@ -61,15 +98,27 @@ def init_db():
         c.execute('''CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             email VARCHAR(255) UNIQUE NOT NULL,
-            password VARCHAR(255) NOT NULL
+            password VARCHAR(255) NOT NULL,
+            role VARCHAR(50) DEFAULT 'user'
         )''')
+        # Ajouter la colonne role si elle n'existe pas (pour les anciennes bases)
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user'")
+        except:
+            pass
     else:
         # SQLite syntax
         c.execute('''CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            role TEXT DEFAULT 'user'
         )''')
+        # Ajouter la colonne role si elle n'existe pas (pour les anciennes bases)
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'")
+        except:
+            pass
     
     conn.commit()
     conn.close()
@@ -1325,14 +1374,27 @@ disease_advice = {
     }
 }
 
+def is_valid_email(email):
+    """Valide le format d'un email"""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
 @app.route('/register', methods=['POST', 'OPTIONS'])
 @app.route('/api/register', methods=['POST', 'OPTIONS'])
+@limiter.limit("5 per minute")
 def register():
     data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    
     if not email or not password:
         return jsonify({"error": "Email et mot de passe requis"}), 400
+    
+    # Validation du format email
+    if not is_valid_email(email):
+        logger.warning(f"Tentative d'inscription avec email invalide: {email}")
+        return jsonify({"error": "Format d'email invalide."}), 400
+    
     # Validation du mot de passe
     if len(password) < 8:
         return jsonify({"error": "Le mot de passe doit contenir au moins 8 caractères"}), 400
@@ -1342,46 +1404,60 @@ def register():
         return jsonify({"error": "Le mot de passe doit contenir au moins un chiffre"}), 400
     if not any(char in '!@#$%^&*()_+-=[]{}|;:,.<>?' for char in password):
         return jsonify({"error": "Le mot de passe doit contenir au moins un caractère spécial (!@#$%^&*...)"}), 400
+    
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     try:
         conn = get_db_connection()
         c = conn.cursor()
         if DATABASE_URL:
-            # PostgreSQL uses %s placeholders
-            c.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, hashed_password))
+            c.execute("INSERT INTO users (email, password, role) VALUES (%s, %s, %s)", (email, hashed_password, 'user'))
         else:
-            # SQLite uses ? placeholders
-            c.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, hashed_password))
+            c.execute("INSERT INTO users (email, password, role) VALUES (?, ?, ?)", (email, hashed_password, 'user'))
         conn.commit()
         conn.close()
+        logger.info(f"Nouvel utilisateur inscrit: {email}")
         return jsonify({"message": "Compte créé avec succès ! Vous pouvez maintenant vous connecter."}), 201
     except Exception as e:
         if 'unique' in str(e).lower() or 'duplicate' in str(e).lower():
             return jsonify({"error": "Cet email existe déjà."}), 400
+        logger.error(f"Erreur inscription pour {email}: {str(e)}")
         return jsonify({"error": "Erreur lors de la création du compte."}), 400
 
 @app.route('/login', methods=['POST', 'OPTIONS'])
 @app.route('/api/login', methods=['POST', 'OPTIONS'])
+@limiter.limit("10 per minute")
 def login():
     data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    
     if not email or not password:
         return jsonify({"error": "Veuillez entrer votre email et votre mot de passe."}), 400
+    
     conn = get_db_connection()
     c = conn.cursor()
     if DATABASE_URL:
-        c.execute("SELECT id, password FROM users WHERE email = %s", (email,))
+        c.execute("SELECT id, password, role FROM users WHERE email = %s", (email,))
     else:
-        c.execute("SELECT id, password FROM users WHERE email = ?", (email,))
+        c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
     user = c.fetchone()
     conn.close()
+    
     if not user:
+        logger.warning(f"Tentative de connexion échouée - email inconnu: {email} depuis {request.remote_addr}")
         return jsonify({"error": "❌ Aucun compte trouvé avec cet email. Veuillez d'abord créer un compte."}), 401
+    
     if not bcrypt.check_password_hash(user[1], password):
+        logger.warning(f"Tentative de connexion échouée - mauvais mot de passe pour: {email} depuis {request.remote_addr}")
         return jsonify({"error": "❌ Mot de passe incorrect. Veuillez réessayer."}), 401
+    
     token = create_access_token(identity=str(user[0]))
-    return jsonify({"token": token, "message": "Connexion réussie !"}), 200
+    logger.info(f"Connexion réussie: {email}")
+    return jsonify({
+        "token": token, 
+        "message": "Connexion réussie !",
+        "role": user[2] if len(user) > 2 else 'user'
+    }), 200
 
 @app.route('/advice', methods=['POST', 'OPTIONS'])
 @app.route('/api/advice', methods=['POST', 'OPTIONS'])
@@ -1448,6 +1524,10 @@ def get_advice():
         "message": "Désolé, je n'ai pas d'information spécifique sur cette maladie.",
         "suggestions": suggestions if suggestions else None
     }), 200
+
+# Enregistrement des routes d'administration (backoffice)
+from admin import admin_bp
+app.register_blueprint(admin_bp)
 
 @app.route('/health', methods=['GET', 'OPTIONS'])
 @app.route('/api/health', methods=['GET', 'OPTIONS'])

@@ -43,7 +43,7 @@ function Auth({ onLogin }) {
       if (isLogin) {
         const res = await axios.post(`${API_URL}/login`, { email, password });
         setSuccessMessage('✅ Connexion réussie ! Redirection...');
-        setTimeout(() => onLogin(res.data.token), 800);
+        setTimeout(() => onLogin(res.data.token, res.data.role), 800);
       } else {
         const res = await axios.post(`${API_URL}/register`, { email, password });
         setSuccessMessage('✅ ' + (res.data.message || 'Compte créé avec succès !'));

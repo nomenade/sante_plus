@@ -117,7 +117,32 @@
   color: #10b981;
 }
 
-.dashboard.dark-mode .logout-btn {
+.dashboard.dark-mode .admin-btn-header {
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.admin-btn-header:hover {
+  background: rgba(255,255,255,0.3);
+  border-color: rgba(255,255,255,0.5);
+}
+
+.admin-btn-header svg {
+  width: 18px;
+  height: 18px;
+}
+
+.logout-btn {
   background: #0f172a;
   border-color: var(--border-color);
   color: var(--text-secondary);

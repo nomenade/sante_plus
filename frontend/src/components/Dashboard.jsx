@@ -4,7 +4,7 @@ import './Dashboard.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5001/api';
 
-function Dashboard({ token, onLogout }) {
+function Dashboard({ token, onLogout, userRole, onOpenAdmin }) {
   const [disease, setDisease] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -101,6 +101,14 @@ function Dashboard({ token, onLogout }) {
             </div>
           </div>
           <div className="header-right">
+            {userRole === 'admin' && (
+              <button className="admin-btn-header" onClick={onOpenAdmin} title="Backoffice">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                Backoffice
+              </button>
+            )}
             <button
               className="theme-toggle"
               onClick={() => setDarkMode(!darkMode)}
