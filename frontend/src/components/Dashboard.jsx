@@ -168,17 +168,17 @@ function Dashboard({ token, onLogout, userRole, onOpenAdmin }) {
               votre santé.
             </p>
             <div className="hero-stats">
-              <div className="stat-item">
-                <span className="stat-number">16+</span>
-                <span className="stat-label">Maladies traitées</span>
+              <div className="hero-stat-item">
+                <span className="hero-stat-number">16+</span>
+                <span className="hero-stat-label">Maladies traitées</span>
               </div>
-              <div className="stat-item">
-                <span className="stat-number">100%</span>
-                <span className="stat-label">Conseils gratuits</span>
+              <div className="hero-stat-item">
+                <span className="hero-stat-number">100%</span>
+                <span className="hero-stat-label">Conseils gratuits</span>
               </div>
-              <div className="stat-item">
-                <span className="stat-number">24/7</span>
-                <span className="stat-label">Disponible</span>
+              <div className="hero-stat-item">
+                <span className="hero-stat-number">24/7</span>
+                <span className="hero-stat-label">Disponible</span>
               </div>
             </div>
           </div>
