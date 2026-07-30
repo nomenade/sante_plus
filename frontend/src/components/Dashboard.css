@@ -522,7 +522,7 @@
   display: flex;
   gap: 32px;
 }
-.hero-stats:hover{
+.hero-stat-item:hover{
   cursor:pointer;
 }
 
