@@ -522,6 +522,9 @@
   display: flex;
   gap: 32px;
 }
+.hero-stats:hover{
+  cursor:pointer;
+}
 
 .hero-stat-item {
   display: flex;
