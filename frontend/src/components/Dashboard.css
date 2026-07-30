@@ -522,9 +522,7 @@
   display: flex;
   gap: 32px;
 }
-.hero-stat-item:hover{
-  cursor:pointer;
-}
+
 
 .hero-stat-item {
   display: flex;
@@ -542,6 +540,7 @@
 .hero-stat-item:hover {
   transform: translateY(-4px);
   background: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
 }
 
 .hero-stat-number {
