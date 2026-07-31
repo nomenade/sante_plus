@@ -188,7 +188,13 @@ function Dashboard({ token, onLogout, userRole, onOpenAdmin }) {
         <section className="search-section">
           <div className="search-container">
             <div className="search-header">
-              <div className="search-icon-big">
+              <div className="search-icon-big" onClick={() => {
+                const input = document.querySelector('.search-input-wrapper input');
+                if (input) {
+                  input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  setTimeout(() => input.focus(), 400);
+                }
+              }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
