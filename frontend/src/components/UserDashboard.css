@@ -1,0 +1,689 @@
+/* ========== USER DASHBOARD - Carnet de santé (Option 3) ========== */
+
+.user-dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 0;
+  position: relative;
+}
+
+/* ---------- Toast ---------- */
+.ud-toast {
+  position: fixed;
+  top: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  background: var(--bg-secondary, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: var(--shadow-lg, 0 10px 30px rgba(0,0,0,0.1));
+  padding: 12px 20px;
+  font-size: 14px;
+  animation: udToastIn 0.3s ease;
+}
+.ud-toast.success { border-left: 4px solid #22c55e; color: #15803d; }
+.ud-toast.error { border-left: 4px solid #ef4444; color: #b91c1c; }
+@keyframes udToastIn {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ---------- Header ---------- */
+.ud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.08));
+  margin-bottom: 20px;
+}
+.ud-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ud-brand-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--green-gradient, linear-gradient(135deg, #059669, #10b981));
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ud-brand-logo svg {
+  width: 22px;
+  height: 22px;
+}
+.ud-brand strong {
+  font-size: 19px;
+  color: var(--text-primary, #1a1a2e);
+  display: block;
+}
+.ud-brand strong em {
+  font-style: normal;
+  color: #059669;
+}
+.ud-brand span {
+  font-size: 12.5px;
+  color: var(--text-muted, #6b7280);
+}
+.ud-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+.ud-profile:hover {
+  background: var(--bg-primary, #f0fdf4);
+}
+.ud-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: 0 0 0 3px #ffffff, 0 0 0 4px #dcfce7;
+}
+.ud-profile-text {
+  text-align: left;
+}
+.ud-profile-text strong {
+  display: block;
+  font-size: 14.5px;
+  color: var(--text-primary, #1a1a2e);
+}
+.ud-profile-text span {
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+}
+
+/* ---------- Corps : sidebar + contenu ---------- */
+.ud-body {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+.ud-sidebar {
+  flex: 0 0 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.08));
+  padding: 12px;
+  position: sticky;
+  top: 90px;
+}
+.ud-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-secondary, #4b5563);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+.ud-nav-item svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.ud-nav-item:hover {
+  background: var(--bg-primary, #f0fdf4);
+  color: #059669;
+}
+.ud-nav-item.active {
+  background: var(--green-gradient, linear-gradient(135deg, #059669, #10b981));
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+.ud-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---------- Accueil ---------- */
+.ud-welcome h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  color: var(--text-primary, #1a1a2e);
+}
+.ud-welcome p {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  color: var(--text-muted, #6b7280);
+}
+.ud-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.ud-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.08));
+  padding: 18px;
+}
+.ud-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-primary, #1a1a2e);
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+.ud-card-title svg {
+  width: 20px;
+  height: 20px;
+  color: #059669;
+}
+
+/* ---------- Carte hydratation ---------- */
+.hydration {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.hydration-ring {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  flex-shrink: 0;
+}
+.hydration-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.ring-bg {
+  fill: none;
+  stroke: #e5e7eb;
+  stroke-width: 12;
+}
+.ring-value {
+  fill: none;
+  stroke: #10b981;
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease;
+}
+.hydration-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary, #1a1a2e);
+}
+.hydration-center strong {
+  font-size: 18px;
+}
+.hydration-center span {
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+}
+.hydration-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.h-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-primary, #f0fdf4);
+  color: #059669;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.h-btn:hover {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+}
+.hydration-pct {
+  font-size: 15px;
+  font-weight: 700;
+  color: #047857;
+}
+
+/* ---------- Carte dernière consultation ---------- */
+.last-consult-badge {
+  display: inline-block;
+  font-size: 20px;
+  font-weight: 800;
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  padding: 6px 14px;
+  border-radius: 12px;
+}
+.last-consult p {
+  margin: 12px 0 4px;
+  font-size: 14px;
+  color: var(--text-primary, #1a1a2e);
+  font-weight: 600;
+}
+.last-consult-ia {
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+}
+
+/* ---------- Carte médicaments ---------- */
+.med-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.med-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  background: var(--bg-primary, #f0fdf4);
+}
+.med-info strong {
+  display: block;
+  font-size: 13.5px;
+  color: var(--text-primary, #1a1a2e);
+}
+.med-info span {
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+}
+.rappel-pill {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.rappel-pill.active {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #bbf7d0;
+}
+
+/* ---------- Carte antécédents ---------- */
+.antecedents-view p {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--text-primary, #1a1a2e);
+  line-height: 1.5;
+  padding: 12px;
+  background: var(--bg-primary, #f0fdf4);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+}
+.edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  background: var(--bg-card, #ffffff);
+  color: #047857;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.edit-btn svg {
+  width: 15px;
+  height: 15px;
+}
+.edit-btn:hover {
+  background: #ecfdf5;
+  border-color: #10b981;
+}
+.antecedents-edit textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  background: var(--bg-primary, #f0fdf4);
+  font-size: 13.5px;
+  color: var(--text-primary, #1a1a2e);
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+}
+.antecedents-edit textarea:focus {
+  border-color: #10b981;
+}
+.antecedents-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.save-btn {
+  padding: 9px 16px;
+  border: none;
+  border-radius: 10px;
+  background: var(--green-gradient, linear-gradient(135deg, #059669, #10b981));
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.save-btn:hover {
+  transform: translateY(-1px);
+}
+.cancel-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  background: var(--bg-card, #ffffff);
+  color: var(--text-secondary, #4b5563);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ---------- Vues : historique / profil / rappels ---------- */
+.ud-view-title {
+  margin: 0 0 16px;
+  font-size: 20px;
+  color: var(--text-primary, #1a1a2e);
+}
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.history-item {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05));
+}
+.history-date {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #047857;
+  background: #ecfdf5;
+  padding: 6px 10px;
+  border-radius: 8px;
+  height: fit-content;
+}
+.history-item strong {
+  font-size: 14px;
+  color: var(--text-primary, #1a1a2e);
+}
+.history-item p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted, #6b7280);
+}
+
+.profile-form {
+  max-width: 420px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.08));
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.profile-avatar-large {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.profile-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #4b5563);
+}
+.profile-form input {
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  background: var(--bg-primary, #f0fdf4);
+  font-size: 13.5px;
+  color: var(--text-primary, #1a1a2e);
+  outline: none;
+}
+.profile-form input:focus {
+  border-color: #10b981;
+}
+.profile-form input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.profile-actions {
+  margin-top: 4px;
+}
+
+.rappels-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+}
+.rappel-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05));
+}
+.rappel-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  flex-shrink: 0;
+}
+.rappel-dot.on {
+  background: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+}
+.rappel-item > div {
+  flex: 1 1 auto;
+}
+.rappel-item strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-primary, #1a1a2e);
+}
+.rappel-item span {
+  font-size: 12.5px;
+  color: var(--text-muted, #6b7280);
+}
+.rappel-note {
+  font-size: 13px;
+  color: var(--text-muted, #6b7280);
+  padding: 12px;
+  background: rgba(5, 150, 105, 0.08);
+  border-radius: 10px;
+}
+
+/* ---------- Dark mode ---------- */
+.dashboard.dark-mode .ud-header,
+.dashboard.dark-mode .ud-sidebar,
+.dashboard.dark-mode .ud-card,
+.dashboard.dark-mode .history-item,
+.dashboard.dark-mode .profile-form,
+.dashboard.dark-mode .rappel-item {
+  background: #1e293b;
+  border-color: #334155;
+}
+.dashboard.dark-mode .ud-brand strong,
+.dashboard.dark-mode .ud-profile-text strong,
+.dashboard.dark-mode .ud-welcome h2,
+.dashboard.dark-mode .ud-card-title,
+.dashboard.dark-mode .ud-view-title,
+.dashboard.dark-mode .history-item strong,
+.dashboard.dark-mode .rappel-item strong,
+.dashboard.dark-mode .med-info strong,
+.dashboard.dark-mode .antecedents-view p,
+.dashboard.dark-mode .hydration-center {
+  color: #f1f5f9;
+}
+.dashboard.dark-mode .ud-brand span,
+.dashboard.dark-mode .ud-profile-text span,
+.dashboard.dark-mode .ud-welcome p,
+.dashboard.dark-mode .history-item p,
+.dashboard.dark-mode .rappel-item span,
+.dashboard.dark-mode .med-info span,
+.dashboard.dark-mode .last-consult-ia,
+.dashboard.dark-mode .rappel-note {
+  color: #94a3b8;
+}
+.dashboard.dark-mode .ud-nav-item {
+  color: #94a3b8;
+}
+.dashboard.dark-mode .ud-nav-item:hover {
+  background: #0f172a;
+  color: #4ade80;
+}
+.dashboard.dark-mode .ud-nav-item.active {
+  background: var(--green-gradient);
+  color: #ffffff;
+}
+.dashboard.dark-mode .ud-profile:hover {
+  background: #0f172a;
+}
+.dashboard.dark-mode .med-item,
+.dashboard.dark-mode .antecedents-view p,
+.dashboard.dark-mode .antecedents-edit textarea,
+.dashboard.dark-mode .profile-form input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+.dashboard.dark-mode .ring-bg {
+  stroke: #334155;
+}
+.dashboard.dark-mode .h-btn {
+  background: #0f172a;
+  border-color: #334155;
+  color: #4ade80;
+}
+.dashboard.dark-mode .rappel-pill {
+  background: #0f172a;
+  border-color: #334155;
+  color: #94a3b8;
+}
+.dashboard.dark-mode .rappel-pill.active {
+  background: #14532d;
+  color: #4ade80;
+  border-color: #166534;
+}
+.dashboard.dark-mode .cancel-btn,
+.dashboard.dark-mode .edit-btn {
+  background: #0f172a;
+  border-color: #334155;
+  color: #86efac;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 880px) {
+  .ud-cards {
+    grid-template-columns: 1fr;
+  }
+  .ud-body {
+    flex-direction: column;
+  }
+  .ud-sidebar {
+    flex: 1 1 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    position: static;
+    width: 100%;
+  }
+  .ud-nav-item {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+@media (max-width: 520px) {
+  .ud-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .hydration {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .ud-nav-item span {
+    display: none;
+  }
+  .ud-nav-item {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+

@@ -1,18 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import Chatbot from './Chatbot';
+import SymptomChecker from './SymptomChecker';
+import UserDashboard from './UserDashboard';
+import EmergencyLocator from './EmergencyLocator';
 import './Dashboard.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5001/api';
-
-function Dashboard({ token, onLogout, userRole, onOpenAdmin }) {
-  const [disease, setDisease] = useState('');
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+function Dashboard({ onLogout, userRole, onOpenAdmin, userEmail }) {
   const [darkMode, setDarkMode] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [toast, setToast] = useState(null);
-  const resultRef = useRef(null);
+  const [tool, setTool] = useState('chatbot'); // 'chatbot' | 'checker'
 
   // Dark mode toggle - only affects Dashboard, not Auth form
   useEffect(() => {
@@ -33,59 +29,12 @@ function Dashboard({ token, onLogout, userRole, onOpenAdmin }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!disease.trim()) return;
-
-    setLoading(true);
-    setError('');
-    setResult(null);
-
-    try {
-      const res = await axios.post(`${API_URL}/advice`, { disease: disease.trim() });
-      setResult(res.data);
-      if (res.data.found) {
-        showToast(`✓ Résultats trouvés pour ${res.data.disease}`, 'success');
-      }
-      // Scroll to results
-      setTimeout(() => {
-        resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-    } catch (err) {
-      setError('Erreur lors de la recherche. Veuillez réessayer.');
-      showToast('✗ Erreur de connexion au serveur', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSuggestionClick = (suggestion) => {
-    setDisease(suggestion);
-    // Auto-submit after a brief delay
-    setTimeout(() => {
-      const form = document.querySelector('.search-form');
-      if (form) form.requestSubmit();
-    }, 200);
-  };
-
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <div className={`dashboard ${darkMode ? 'dark' : ''}`}>
-      {/* Toast Notification */}
-      {toast && (
-        <div className={`toast ${toast.type}`}>
-          <span>{toast.message}</span>
-        </div>
-      )}
-
       {/* Header */}
       <header className="dashboard-header">
         <div className="header-content">
@@ -145,294 +94,61 @@ function Dashboard({ token, onLogout, userRole, onOpenAdmin }) {
       </header>
 
       <main className="dashboard-main">
-        {/* Hero Section with Particles */}
-        <section className="hero-section">
-          <div className="particles">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="particle" style={{
-                left: `${10 + (i * 15)}%`,
-                animationDelay: `${i * 0.7}s`,
-                animationDuration: `${3 + i * 0.5}s`
-              }} />
-            ))}
-          </div>
-          <div className="hero-content">
-            <div className="hero-badge">
-              <span className="badge-dot"></span>
-              Plateforme Santé en ligne
-            </div>
-            <h2>Votre santé, <span className="gradient-text">notre priorité</span></h2>
-            <p>
-              Découvrez des conseils personnalisés, des recommandations alimentaires 
-              et des informations sur les médicaments pour mieux comprendre et gérer 
-              votre santé.
-            </p>
-            <div className="hero-stats">
-              <div className="hero-stat-item">
-                <span className="hero-stat-number">16+</span>
-                <span className="hero-stat-label">Maladies traitées</span>
-              </div>
-              <div className="hero-stat-item">
-                <span className="hero-stat-number">100%</span>
-                <span className="hero-stat-label">Conseils gratuits</span>
-              </div>
-              <div className="hero-stat-item">
-                <span className="hero-stat-number">24/7</span>
-                <span className="hero-stat-label">Disponible</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Search Section */}
-        <section className="search-section">
-          <div className="search-container">
-            <div className="search-header">
-              <div className="search-icon-big" onClick={() => {
-                const input = document.querySelector('.search-input-wrapper input');
-                if (input) {
-                  input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  setTimeout(() => input.focus(), 400);
-                }
-              }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              </div>
-              <h3>Quel est votre problème de santé ?</h3>
-              <p>Décrivez votre maladie ou vos symptômes pour obtenir des conseils personnalisés</p>
-            </div>
-            
-            <form onSubmit={handleSearch} className="search-form">
-              <div className="search-input-wrapper">
-                <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Ex: diabète, hypertension, paludisme, grippe..."
-                  value={disease}
-                  onChange={(e) => setDisease(e.target.value)}
-                />
-                <button type="submit" className="search-btn" disabled={loading || !disease.trim()}>
-                  {loading ? (
-                    <span className="loading-spinner"></span>
-                  ) : (
-                    <>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="22" y1="2" x2="11" y2="13" />
-                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                      </svg>
-                      Consulter
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-
-            {/* Quick suggestions */}
-            <div className="quick-suggestions">
-              <span className="suggestions-label">Suggestions rapides :</span>
-              <div className="suggestion-chips">
-                {[
-                  { name: 'Diabète', icon: '🩸' },
-                  { name: 'Hypertension', icon: '❤️' },
-                  { name: 'Paludisme', icon: '🦟' },
-                  { name: 'Grippe', icon: '🤒' },
-                  { name: 'VIH', icon: '🔴' },
-                  { name: 'Choléra', icon: '💧' },
-                  { name: 'Dengue', icon: '🦟' },
-                  { name: 'Anémie', icon: '🩺' }
-                ].map((s) => (
-                  <button
-                    key={s.name}
-                    className="suggestion-chip"
-                    onClick={() => handleSuggestionClick(s.name)}
-                  >
-                    <span className="chip-icon">{s.icon}</span>
-                    {s.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Results Section */}
-        {error && (
-          <div className="error-message">
+        {/* Sélecteur d'outil : Chatbot / Symptom Checker / Carnet / Urgences */}
+        <div className="tool-switcher">
+          <button
+            type="button"
+            className={`tool-tab ${tool === 'chatbot' ? 'active' : ''}`}
+            onClick={() => setTool('chatbot')}
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
+              <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+              <path d="M19 10v2a7 7 0 01-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" />
             </svg>
-            {error}
-          </div>
-        )}
+            Chatbot IA
+          </button>
+          <button
+            type="button"
+            className={`tool-tab ${tool === 'checker' ? 'active' : ''}`}
+            onClick={() => setTool('checker')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="7" r="4" />
+              <path d="M5.5 21v-6a6.5 6.5 0 0113 0v6" />
+              <path d="M2 21h20" />
+            </svg>
+            Symptom Checker
+          </button>
+          <button
+            type="button"
+            className={`tool-tab ${tool === 'carnet' ? 'active' : ''}`}
+            onClick={() => setTool('carnet')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+            Carnet de santé
+          </button>
+          <button
+            type="button"
+            className={`tool-tab ${tool === 'locator' ? 'active' : ''}`}
+            onClick={() => setTool('locator')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            Urgences
+          </button>
+        </div>
 
-        {result && (
-          <section className="results-section" ref={resultRef}>
-            {result.found ? (
-              <div className="results-container">
-                <div className="result-header">
-                  <div className="result-title-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                    </svg>
-                  </div>
-                  <div>
-                    <span className="result-badge">Diagnostic</span>
-                    <h3>{result.disease}</h3>
-                  </div>
-                </div>
+        {tool === 'chatbot' && <Chatbot />}
+        {tool === 'checker' && <SymptomChecker />}
+        {tool === 'carnet' && <UserDashboard userEmail={userEmail} />}
+        {tool === 'locator' && <EmergencyLocator />}
 
-                <div className="result-grid">
-                  {/* Symptoms */}
-                  <div className="result-card symptoms">
-                    <div className="card-header">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="16" y1="13" x2="8" y2="13" />
-                        <line x1="16" y1="17" x2="8" y2="17" />
-                      </svg>
-                      <h4>Symptômes</h4>
-                    </div>
-                    <ul>
-                      {result.data.symptomes.map((s, i) => (
-                        <li key={i}>
-                          <span className="bullet bullet-warning"></span>
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Conseils */}
-                  <div className="result-card conseils">
-                    <div className="card-header">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                      </svg>
-                      <h4>Conseils</h4>
-                    </div>
-                    <ul>
-                      {result.data.conseils.map((c, i) => (
-                        <li key={i}>
-                          <span className="bullet bullet-success"></span>
-                          {c}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Médicaments */}
-                  <div className="result-card medicaments">
-                    <div className="card-header">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="4" y="2" width="16" height="20" rx="2" />
-                        <line x1="9" y1="22" x2="9" y2="2" />
-                        <line x1="15" y1="22" x2="15" y2="2" />
-                      </svg>
-                      <h4>Médicaments</h4>
-                    </div>
-                    <ul>
-                      {result.data.medicaments.map((m, i) => (
-                        <li key={i}>
-                          <span className="bullet bullet-info"></span>
-                          {m}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Aliments Recommandés */}
-                  <div className="result-card aliments-recommandes">
-                    <div className="card-header">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M18 8h1a4 4 0 010 8h-1" />
-                        <path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z" />
-                        <line x1="6" y1="1" x2="6" y2="4" />
-                        <line x1="10" y1="1" x2="10" y2="4" />
-                        <line x1="14" y1="1" x2="14" y2="4" />
-                      </svg>
-                      <h4>Aliments Recommandés</h4>
-                    </div>
-                    <ul>
-                      {result.data.aliments_recommandes.map((a, i) => (
-                        <li key={i}>
-                          <span className="bullet bullet-purple"></span>
-                          {a}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Aliments à Éviter */}
-                  <div className="result-card aliments-eviter">
-                    <div className="card-header">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="15" y1="9" x2="9" y2="15" />
-                        <line x1="9" y1="9" x2="15" y2="15" />
-                      </svg>
-                      <h4>Aliments à Éviter</h4>
-                    </div>
-                    <ul>
-                      {result.data.aliments_eviter.map((a, i) => (
-                        <li key={i}>
-                          <span className="bullet bullet-danger"></span>
-                          {a}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="disclaimer">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                    <line x1="12" y1="9" x2="12" y2="13" />
-                    <line x1="12" y1="17" x2="12.01" y2="17" />
-                  </svg>
-                  <p>
-                    <strong>Important :</strong> Ces informations sont données à titre indicatif. 
-                    Consultez toujours un professionnel de santé pour un diagnostic et un traitement adapté.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="not-found">
-                <div className="not-found-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                </div>
-                <h3>Maladie non trouvée</h3>
-                <p>{result.message}</p>
-                {result.suggestions && result.suggestions.length > 0 && (
-                  <div className="suggestions-list">
-                    <p>Essayez plutôt :</p>
-                    <div className="suggestion-chips">
-                      {result.suggestions.map((s, i) => (
-                        <button
-                          key={i}
-                          className="suggestion-chip"
-                          onClick={() => handleSuggestionClick(s)}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
-        )}
 
         {/* Health Tips Section */}
         <section className="tips-section">

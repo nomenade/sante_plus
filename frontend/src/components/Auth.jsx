@@ -19,7 +19,7 @@ function Auth({ onLogin }) {
     if (pwd.length < 8) errors.push('au moins 8 caractères');
     if (!/[A-Z]/.test(pwd)) errors.push('une majuscule');
     if (!/[0-9]/.test(pwd)) errors.push('un chiffre');
-    if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(pwd)) errors.push('un caractère spécial (!@#$%^&*...)');
+    if (!/[!@#$%^&*()_+=\[\]{}|;:,.<>?]/.test(pwd)) errors.push('un caractère spécial (!@#$%^&*...)');
     return errors;
   };
 
@@ -43,7 +43,7 @@ function Auth({ onLogin }) {
       if (isLogin) {
         const res = await axios.post(`${API_URL}/login`, { email, password });
         setSuccessMessage('✅ Connexion réussie ! Redirection...');
-        setTimeout(() => onLogin(res.data.token, res.data.role), 800);
+        setTimeout(() => onLogin(res.data.token, res.data.role, email), 800);
       } else {
         const res = await axios.post(`${API_URL}/register`, { email, password });
         setSuccessMessage('✅ ' + (res.data.message || 'Compte créé avec succès !'));

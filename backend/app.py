@@ -4,13 +4,10 @@ from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity
 import sqlite3
 import os
-import psycopg2
 from urllib.parse import urlparse
 import re
 import logging
 from datetime import timedelta
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 
 # Configuration du logging
 logging.basicConfig(
@@ -28,13 +25,29 @@ jwt = JWTManager(app)
 
 bcrypt = Bcrypt(app)
 
-# Rate Limiting - protection contre les attaques brute force
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://"
-)
+# Rate Limiting - protection contre les attaques brute force (optionnel)
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["200 per day", "50 per hour"],
+        storage_uri="memory://"
+    )
+    _LIMITER_AVAILABLE = True
+except ImportError:
+    logger.warning("⚠️ flask-limiter non installé. Le rate limiting est désactivé.")
+    logger.warning("   Installez-le avec: pip install flask-limiter")
+    _LIMITER_AVAILABLE = False
+
+    class _NoLimiter:
+        """Fallback inerte quand flask-limiter n'est pas disponible."""
+        def limit(self, *args, **kwargs):
+            def decorator(fn):
+                return fn
+            return decorator
+    limiter = _NoLimiter()
 
 # Configuration CORS
 FRONTEND_URL = os.environ.get('FRONTEND_URL')
@@ -82,7 +95,8 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 def get_db_connection():
     """Get database connection - PostgreSQL in production, SQLite in development"""
     if DATABASE_URL:
-        # Production: PostgreSQL
+        # Production: PostgreSQL (import différé pour ne pas bloquer le démarrage local)
+        import psycopg2
         result = urlparse(DATABASE_URL)
         conn = psycopg2.connect(
             database=result.path[1:],
@@ -1535,8 +1549,9 @@ def get_advice():
     }), 200
 
 # Enregistrement des routes d'administration (backoffice)
-from admin import admin_bp
-app.register_blueprint(admin_bp)
+# Injection des dépendances pour éviter tout import circulaire
+from admin import create_admin_bp
+app.register_blueprint(create_admin_bp(get_db_connection, logger, bcrypt, DATABASE_URL))
 
 @app.route('/health', methods=['GET', 'OPTIONS'])
 @app.route('/api/health', methods=['GET', 'OPTIONS'])
@@ -1544,7 +1559,8 @@ def health_check():
     return jsonify({"status": "ok", "message": "Santé+ API is running"}), 200
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    # Port par défaut aligné sur le frontend et les scripts (5001)
+    port = int(os.environ.get('PORT', 5001))
     host = os.environ.get('HOST', '0.0.0.0')
     debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     
@@ -1555,4 +1571,5 @@ if __name__ == '__main__':
     print(f"  Debug mode: {debug}")
     print("=" * 50)
     
-    app.run(host=host, port=port, debug=debug)
+    # threaded=True : gère plusieurs requêtes simultanément (démarrage plus réactif)
+    app.run(host=host, port=port, debug=debug, threaded=True)

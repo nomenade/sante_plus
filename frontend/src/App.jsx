@@ -7,21 +7,30 @@ import './App.css';
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || 'user');
+  const [userEmail, setUserEmail] = useState(localStorage.getItem('userEmail') || '');
   const [showAdmin, setShowAdmin] = useState(false);
 
-  const handleLogin = (newToken, role) => {
+  const handleLogin = (newToken, role, email) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('userRole', role || 'user');
+    if (email) {
+      localStorage.setItem('userEmail', email);
+      localStorage.removeItem('santeUserProfile'); // profil recalculé pour ce compte
+    }
     setToken(newToken);
     setUserRole(role || 'user');
+    setUserEmail(email || '');
     setShowAdmin(false);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('santeUserProfile');
     setToken(null);
     setUserRole('user');
+    setUserEmail('');
     setShowAdmin(false);
   };
 
@@ -44,6 +53,7 @@ function App() {
           token={token} 
           onLogout={handleLogout} 
           userRole={userRole}
+          userEmail={userEmail}
           onOpenAdmin={handleOpenAdmin}
         />
       )}
