@@ -2,46 +2,70 @@ import React, { useState, useRef } from 'react';
 import { DISEASE_INFO } from './symptomData';
 import './SymptomChecker.css';
 
+// Normalise un texte (minuscules, sans accents) pour la recherche approximative
+const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+// Cherche le nom d'une maladie connue dans un texte saisi librement
+// (insensible aux accents : "covid", "COVID-19", "rage", "hepatite" -> fiche)
+function matchDiseaseByName(text) {
+  const wanted = norm(text);
+  if (!wanted) return null;
+  return (
+    Object.keys(DISEASE_INFO).find((d) => norm(d) === wanted) ||
+    Object.keys(DISEASE_INFO).find((d) => norm(d).includes(wanted) || wanted.includes(norm(d)))
+  ) || null;
+}
+
 /* ============================================================
-   Zones anatomiques cliquables (schéma stylisé, homme de face)
+   Zones anatomiques cliquables (figure humaine réaliste de face)
+   Corps segmenté avec arrondis pour un rendu proche d'un schéma
+   anatomique : cou, épaules/pontrine, abdomen, bassin, bras (haut
+   + avant-bras + main), jambes (cuisse + pied). Chaque zone est
+   cliquable et sélectionnable.
    ============================================================ */
 const BODY_ZONES = [
-  { id: 'tete', label: 'Tête', node: <circle cx="100" cy="38" r="26" /> },
+  // Tête (cercle)
+  { id: 'tete', label: 'Tête', node: <circle cx="110" cy="32" r="24" /> },
+  // Cou
+  { id: 'cou', label: 'Cou', node: <rect x="101" y="42" width="18" height="22" rx="7" /> },
+  // Poitrine (épaules et buste supérieur, rentrant à la taille)
   {
     id: 'poitrine',
     label: 'Poitrine',
-    node: <path d="M78 84 C70 112 70 134 76 152 L124 152 C130 134 130 112 122 84 Z" />
+    node: <path d="M84 62 L136 62 L126 94 L96 100 L90 96 L84 90 L84 110 L80 112 L82 140 L96 142 L126 142 Z" />
   },
+  // Abdomen (buste inférieur, avant de la taille)
   {
     id: 'abdomen',
     label: 'Abdomen',
-    node: <path d="M76 152 L124 152 C128 178 128 198 122 212 L78 212 C72 198 72 178 76 152 Z" />
+    node: <path d="M96 140 L126 140 L124 176 L98 176 Z" />
   },
+  // Bassin (hanches / pelvis)
   {
     id: 'bassin',
     label: 'Bassin',
-    node: <path d="M78 212 L122 212 C125 232 124 248 117 258 L83 258 C76 248 75 232 78 212 Z" />
+    node: <path d="M98 176 L124 176 L134 200 L88 200 Z" />
   },
-  {
-    id: 'brasG',
-    label: 'Bras gauche',
-    node: <path d="M65 84 L54 90 C50 120 50 160 54 196 L64 200 C72 196 74 150 74 120 Z" />
-  },
-  {
-    id: 'brasD',
-    label: 'Bras droit',
-    node: <path d="M135 84 L146 90 C150 120 150 160 146 196 L136 200 C128 196 126 150 126 120 Z" />
-  },
-  {
-    id: 'jambeG',
-    label: 'Jambe gauche',
-    node: <path d="M82 258 L100 258 C100 300 100 344 98 356 L84 356 C81 344 80 300 82 258 Z" />
-  },
-  {
-    id: 'jambeD',
-    label: 'Jambe droite',
-    node: <path d="M100 258 L118 258 C120 300 119 344 116 356 L102 356 C100 344 100 300 98 258 Z" />
-  }
+  // Bras gauche - haut du bras (épaule -> coude)
+  { id: 'brasG', label: 'Bras gauche (haut)', node: <rect x="70" y="64" width="20" height="58" rx="9" /> },
+  // Avant-bras gauche
+  { id: 'avantBrasG', label: 'Avant-bras gauche', node: <rect x="72" y="122" width="18" height="60" rx="8" /> },
+  // Main gauche
+  { id: 'mainG', label: 'Main gauche', node: <rect x="73" y="182" width="15" height="24" rx="6" /> },
+  // Bras droit du haut
+  { id: 'brasD', label: 'Bras droit (haut)', node: <rect x="128" y="64" width="22" height="66" rx="9" /> },
+  // Avant-bras droit
+  { id: 'avantBrasD', label: 'Avant-bras droit', node: <rect x="130" y="122" width="18" height="60" rx="8" /> },
+  // Main droite
+  { id: 'mainD', label: 'Main droite', node: <rect x="132" y="182" width="15" height="24" rx="6" /> },
+  // Jambe gauche (cuisse + tibia)
+  { id: 'jambeG', label: 'Jambe gauche', node: <rect x="86" y="202" width="28" height="140" rx="11" /> },
+  // Pied gauche
+  { id: 'piedG', label: 'Pied gauche', node: <rect x="82" y="342" width="36" height="26" rx="8" /> },
+  // Jambe droite
+  { id: 'jambeD', label: 'Jambe droite', node: <rect x="112" y="202" width="28" height="140" rx="11" /> },
+  // Pied droit
+  { id: 'piedD', label: 'Pied droit', node: <rect x="102" y="342" width="36" height="26" rx="8" /> }
 ];
 
 /* ============================================================
@@ -59,7 +83,10 @@ const COMMON_SYMPTOMS = [
   { id: 'douleurs_abdominales', label: 'Douleurs abdominales', icon: '🫃' },
   { id: 'frissons', label: 'Frissons', icon: '🥶' },
   { id: 'courbatures', label: 'Courbatures', icon: '💪' },
-  { id: 'douleurs_articulaires', label: 'Douleurs articulaires', icon: '🦴' }
+  { id: 'douleurs_articulaires', label: 'Douleurs articulaires', icon: '🦴' },
+  { id: 'essoufflement', label: 'Essoufflement', icon: '😮‍💨' },
+  { id: 'perte_gout_odorat', label: 'Perte du goût/odorat', icon: '👅' },
+  { id: 'morsure_animale', label: 'Morsure d\'animal', icon: '🐕' }
 ];
 
 /* ============================================================
@@ -75,7 +102,16 @@ const DISEASE_RULES = [
   { disease: 'Anémie', urgency: 'modérée', symptoms: ['fatigue', 'paleurs', 'vertiges', 'essoufflement'] },
   { disease: 'Ulcère', urgency: 'modérée', symptoms: ['douleurs_abdominales', 'nausees', 'vomissements', 'ballonnements'] },
   { disease: 'Migraine', urgency: 'basse', symptoms: ['maux_de_tete', 'nausees'] },
-  { disease: 'Appendicite', urgency: 'élevée', symptoms: ['douleurs_abdominales', 'vomissements', 'nausees', 'fievre'] }
+  { disease: 'Appendicite', urgency: 'élevée', symptoms: ['douleurs_abdominales', 'vomissements', 'nausees', 'fievre'] },
+  { disease: 'COVID-19', urgency: 'élevée', symptoms: ['fievre', 'toux', 'perte_gout_odorat', 'essoufflement', 'fatigue'] },
+  { disease: 'Rage', urgency: 'élevée', symptoms: ['morsure_animale', 'fievre', 'maux_de_tete'] },
+  { disease: 'Tuberculose', urgency: 'élevée', symptoms: ['toux', 'fievre', 'essoufflement', 'fatigue'] },
+  { disease: 'Hépatite B', urgency: 'élevée', symptoms: ['fievre', 'nausees', 'douleurs_abdominales', 'fatigue'] },
+  { disease: 'Méningite', urgency: 'élevée', symptoms: ['maux_de_tete', 'fievre', 'nausees'] },
+  { disease: 'Asthme', urgency: 'modérée', symptoms: ['essoufflement', 'toux', 'fatigue'] },
+  { disease: 'Bronchite', urgency: 'modérée', symptoms: ['toux', 'essoufflement', 'fievre', 'fatigue'] },
+  { disease: 'Rougeole', urgency: 'élevée', symptoms: ['fievre', 'toux', 'maux_de_tete'] },
+  { disease: 'Tétanos', urgency: 'élevée', symptoms: ['morsure_animale', 'fievre'] }
 ];
 
 /* ============================================================
@@ -99,6 +135,8 @@ const SYMPTOM_ZONES = {
   paleurs: ALL_BODY_ZONES,
   toux: ['poitrine'],
   essoufflement: ['poitrine'],
+  perte_gout_odorat: ['tete'],
+  morsure_animale: ALL_BODY_ZONES,
   nausees: ['abdomen'],
   vomissements: ['abdomen'],
   diarrhee: ['abdomen'],
@@ -106,7 +144,7 @@ const SYMPTOM_ZONES = {
   douleurs_abdominales: ['abdomen'],
   ballonnements: ['abdomen'],
   constipation: ['abdomen'],
-  douleurs_articulaires: ['brasG', 'brasD', 'jambeG', 'jambeD']
+  douleurs_articulaires: ['brasG', 'brasD', 'avantBrasG', 'avantBrasD', 'jambeG', 'jambeD', 'mainG', 'mainD', 'piedG', 'piedD', 'cou']
 };
 
 /* Mots-clés pour interpréter les symptômes saisis librement */
@@ -121,7 +159,10 @@ const CUSTOM_KEYWORDS = [
   { re: /courbatur/i, ids: ['courbatures'] },
   { re: /crampe/i, ids: ['crampes_abdominales'] },
   { re: /abdomin|douleur.*ventre/i, ids: ['douleurs_abdominales'] },
-  { re: /t[êe]te|migraine/i, ids: ['maux_de_tete'] }
+  { re: /t[êe]te|migraine/i, ids: ['maux_de_tete'] },
+  { re: /essouffle|souffle.*court|respiration/i, ids: ['essoufflement'] },
+  { re: /(perte.*(go[uû]t|odorat)|go[uû]t.*odorat|odorat)/i, ids: ['perte_gout_odorat'] },
+  { re: /morfdu|mord|griffe.*animal|morsure/i, ids: ['morsure_animale'] }
 ];
 
 /* Suggestions rapides (badges interactifs) */
@@ -216,6 +257,7 @@ function SymptomChecker() {
   const [selectedSymptoms, setSelectedSymptoms] = useState(['vomissements', 'crampes_abdominales']);
   const [customInput, setCustomInput] = useState('');
   const [customSymptoms, setCustomSymptoms] = useState([]);
+  const [quickInput, setQuickInput] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(null); // { source, items:[...] }
   const [toast, setToast] = useState(null);
@@ -252,8 +294,30 @@ function SymptomChecker() {
       showToast('Ce symptôme est déjà ajouté', 'error');
       return;
     }
-    setCustomSymptoms((prev) => [...prev, text]);
+    const next = [...customSymptoms, text];
+    setCustomSymptoms(next);
     setCustomInput('');
+
+    // Nom de maladie saisi directement (covid, rage, tuberculose…) :
+    // on affiche immédiatement sa fiche complète.
+    const direct = matchDiseaseByName(text);
+    if (direct) {
+      const rule = DISEASE_RULES.find((r) => r.disease === direct);
+      const urgency = rule ? rule.urgency : DEFAULT_URGENCY[direct] || 'modérée';
+      setResult({
+        source: 'quick',
+        disease: direct,
+        items: [{ disease: direct, urgency, probability: 95, info: DISEASE_INFO[direct] || null }]
+      });
+      showToast(`Fiche : ${direct}`);
+      scrollToResult();
+      return;
+    }
+
+    // Sinon, analyse symptomatique : le résultat s'affiche sous le bouton "Lancer l'analyse"
+    const ids = buildEffectiveIds(next);
+    if (ids.length > 0) runAnalysisFlow(ids);
+    else showToast('Symptôme non reconnu. Essayez un nom de maladie ou un symptôme précis.', 'error');
   };
 
   const removeCustomSymptom = (text) => {
@@ -261,9 +325,9 @@ function SymptomChecker() {
   };
 
   // Union des symptômes (standard + ceux déduits des champs libres)
-  const effectiveSymptoms = () => {
+  const buildEffectiveIds = (customList) => {
     const ids = new Set(selectedSymptoms);
-    customSymptoms.forEach((text) => {
+    (customList || []).forEach((text) => {
       const lower = text.toLowerCase();
       CUSTOM_KEYWORDS.forEach(({ re, ids: mapped }) => {
         if (re.test(lower)) mapped.forEach((m) => ids.add(m));
@@ -272,23 +336,20 @@ function SymptomChecker() {
     return Array.from(ids);
   };
 
-  const handleAnalyze = () => {
-    if (selectedSymptoms.length === 0 && customSymptoms.length === 0) {
-      showToast('Sélectionnez au moins un symptôme', 'error');
-      return;
-    }
+  // Analyse commune : calcule puis affiche le résultat dans la zone
+  // située juste sous le bouton "Lancer l'analyse"
+  const runAnalysisFlow = (ids) => {
     setAnalyzing(true);
     setResult(null);
     setTimeout(() => {
-      const symptoms = effectiveSymptoms();
-      const items = runAnalysis(symptoms, selectedZones);
+      const items = runAnalysis(ids, selectedZones);
       if (items.length === 0) {
         showToast('Aucune hypothèse trouvée pour ces symptômes', 'error');
       }
       setResult({
         source: 'analysis',
         zones: selectedZones,
-        symptoms,
+        symptoms: ids,
         items: items.map((it) => ({
           ...it,
           info: DISEASE_INFO[it.disease] || null,
@@ -297,7 +358,15 @@ function SymptomChecker() {
       });
       setAnalyzing(false);
       scrollToResult();
-    }, 800);
+    }, 600);
+  };
+
+  const handleAnalyze = () => {
+    if (selectedSymptoms.length === 0 && customSymptoms.length === 0) {
+      showToast('Sélectionnez au moins un symptôme', 'error');
+      return;
+    }
+    runAnalysisFlow(buildEffectiveIds(customSymptoms));
   };
 
   // Suggestion rapide : affiche la fiche complète de la maladie
@@ -311,6 +380,27 @@ function SymptomChecker() {
     });
     showToast(`Fiche rapide : ${disease}`);
     scrollToResult();
+  };
+
+  // Suggestion rapide libre : cherche une maladie non listée dans la base
+  // (insensible aux accents) et affiche sa fiche dans la zone de résultat.
+  const handleQuickCustom = () => {
+    const name = quickInput.trim();
+    if (!name) {
+      showToast('Tapez le nom d\'une maladie', 'error');
+      return;
+    }
+    const wanted = norm(name);
+    const key =
+      Object.keys(DISEASE_INFO).find((d) => norm(d) === wanted) ||
+      Object.keys(DISEASE_INFO).find((d) => norm(d).includes(wanted)) ||
+      Object.keys(DISEASE_INFO).find((d) => wanted.includes(norm(d)));
+    if (!key) {
+      showToast('Maladie non trouvée dans la base. Essayez un autre nom.', 'error');
+      return;
+    }
+    setQuickInput('');
+    handleQuick(key);
   };
 
   return (
@@ -345,7 +435,7 @@ function SymptomChecker() {
           </div>
 
           <div className="body-map">
-            <svg viewBox="0 0 200 370" className="body-svg">
+            <svg viewBox="0 0 220 380" className="body-svg">
               {BODY_ZONES.map((z) => {
                 const isSelected = selectedZones.includes(z.id);
                 return (
@@ -365,6 +455,8 @@ function SymptomChecker() {
               })}
             </svg>
           </div>
+
+          <p className="body-map-hint">Cliquez sur une zone du corps ci-dessus (cou, poitrine, bras, main, jambe, pied…) pour la sélectionner et affiner l'analyse.</p>
 
           <div className="zone-legend">
             {selectedZones.length === 0 ? (
@@ -588,7 +680,7 @@ function SymptomChecker() {
         </div>
       </div>
 
-      {/* Suggestions rapides - badges interactifs */}
+      {/* Suggestions rapides - badges interactifs + maladie libre */}
       <div className="quick-row">
         <span className="suggestions-label">Suggestions rapides :</span>
         <div className="quick-badges">
@@ -603,6 +695,19 @@ function SymptomChecker() {
               {q.name}
             </button>
           ))}
+        </div>
+        <div className="quick-custom">
+          <input
+            type="text"
+            placeholder="Autre maladie (ex : Typhoïde, Ulcère, Appendicite…)"
+            value={quickInput}
+            onChange={(e) => setQuickInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleQuickCustom(); } }}
+            aria-label="Rechercher une autre maladie"
+          />
+          <button type="button" className="quick-custom-btn" onClick={handleQuickCustom}>
+            Afficher
+          </button>
         </div>
       </div>
     </section>

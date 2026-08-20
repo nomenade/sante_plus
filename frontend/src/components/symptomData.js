@@ -82,5 +82,59 @@ export const DISEASE_INFO = {
     medications: ['Traitement antirétroviral (TARV) — suivi médical obligatoire', 'Prévention des infections opportunistes'],
     foodsToAvoid: ['Viandes crues', 'Œufs crus', 'Lait non pasteurisé', 'Alcool'],
     foodsToEat: ['Protéines maigres (poulet, poisson)', 'Fruits et légumes cuits', 'Riz complet', 'Eau potable', 'Arachides']
+  },
+  'COVID-19': {
+    symptoms: ['Fièvre', 'Toux sèche', 'Perte du goût ou de l\'odorat', 'Essoufflement', 'Fatigue', 'Maux de gorge'],
+    medications: ['Paracétamol contre la fièvre (sur conseil)', 'Repos et hydratation', 'Vitamine C et zinc'],
+    foodsToAvoid: ['Aliments frits et gras', 'Boissons glacées', 'Excès de sucre'],
+    foodsToEat: ['Eau en abondance', 'Soupes chaudes', 'Agrumes (vitamine C)', 'Miel', 'Bouillons nourrissants']
+  },
+  'Rage': {
+    symptoms: ['Morsure ou griffure d\'animal', 'Fièvre', 'Maux de tête', 'Salivation excessive', 'Soif'],
+    medications: ['URGENCE — laver la plaie à l\'eau et au savon', 'Vaccin antirabique immédiat', 'Consulter un centre antirabique'],
+    foodsToAvoid: ['Aliments épicés', 'Alcool', 'Caféine en excès'],
+    foodsToEat: ['Eau propre', 'Bouillons légers', 'Bananes', 'Riz bien cuit']
+  },
+  'Tuberculose': {
+    symptoms: ['Toux persistante', 'Fièvre', 'Expectorations (crachats)', 'Fatigue', 'Perte de poids'],
+    medications: ['Traitement antituberculeux (sur prescription)', 'Antibiotiques sous suivi médical', 'Repos prolongé'],
+    foodsToAvoid: ['Alcool', 'Tabac', 'Aliments trop gras'],
+    foodsToEat: ['Protéines (œufs, poulet)', 'Légumes verts', 'Riz', 'Eau potable', 'Fruits']
+  },
+  'Hépatite B': {
+    symptoms: ['Fièvre', 'Fatigue', 'Nausées', 'Jaunisse (coloration jaune)', 'Douleurs abdominales'],
+    medications: ['Vaccination et traitement sur prescription', 'Repos strict', 'Hydratation'],
+    foodsToAvoid: ['Alcool', 'Aliments gras et frits', 'Fruits de mer crus'],
+    foodsToEat: ['Eau potable', 'Riz', 'Légumes cuits', 'Poulet grillé', 'Fruits']
+  },
+  'Méningite': {
+    symptoms: ['Fièvre élevée', 'Maux de tête violents', 'Raids', 'Rigidité ou nuque raide', 'Nausées'],
+    medications: ['URGENCE médicale immédiate', 'Antibiotiques sous prescription'],
+    foodsToAvoid: ['Aucun — consultation urgente', 'Aliments lourds'],
+    foodsToEat: ['Repos strict', 'Eau', 'Bouillons légers']
+  },
+  'Asthme': {
+    symptoms: ['Essoufflement', 'Toux', 'Gêne respiratoire', 'Respiration sifflante', 'Fatigue'],
+    medications: ['Bronchodilatateurs (sur prescription)', 'Posologie selon avis médical', 'Éviter les déclencheurs (poussière, fumée)'],
+    foodsToAvoid: ['Aliments très salés', 'Boissons glacées', 'Aliments transformés riches en sulfites'],
+    foodsToEat: ['Poissons gras (oméga-3)', 'Fruits et légumes frais', 'Eau', 'Repos au calme']
+  },
+  'Bronchite': {
+    symptoms: ['Toux grasse', 'Expectorations', 'Douleur thoracique', 'Fièvre', 'Fatigue'],
+    medications: ['Antitussifs si besoin (sur conseil)', 'Antibiotiques si infection bactérienne', 'Repos'],
+    foodsToAvoid: ['Aliments glacés', 'Boissons glacées', 'Fritures'],
+    foodsToEat: ['Soupes chaudes', 'Miel', 'Citron', 'Légumes cuits', 'Riz']
+  },
+  'Rougeole': {
+    symptoms: ['Fièvre', 'Éruption cutanée rouge', 'Toux', 'Écoulement nasal', 'Maux de tête'],
+    medications: ['Paracétamol contre la fièvre', 'Repos', 'Hydratation abondante'],
+    foodsToAvoid: ['Aliments gras', 'Boissons glacées', 'Fritures'],
+    foodsToEat: ['Eau', 'Soupes chaudes', 'Fruits', 'Riz', 'Bouillons']
+  },
+  'Tétanos': {
+    symptoms: ['Blessure piquée ou coupure profonde', 'Mâchoire serrée', 'Raideur musculaire', 'Spasmes', 'Fièvre'],
+    medications: ['Vaccin antitétanique immédiat', 'Soin de la plaie', 'Urgence médicale si spasmes'],
+    foodsToAvoid: ['Aliments lourds en cas de spasmes', 'Boissons fraîches'],
+    foodsToEat: ['Eau', 'Repas légers', 'Bouillons', 'Fruits']
   }
 };
