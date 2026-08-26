@@ -107,8 +107,9 @@ def get_db_connection():
         )
         return conn
     else:
-        # Development: SQLite
-        conn = sqlite3.connect(DB_PATH)
+        # Development: SQLite (timeout=15s pour éviter "database is locked"
+        # lorsque plusieurs requêtes accèdent à la base simultanément)
+        conn = sqlite3.connect(DB_PATH, timeout=15)
         return conn
 
 def init_db():
@@ -1429,6 +1430,7 @@ def register():
         return jsonify({"error": "Le mot de passe doit contenir au moins un caractère spécial (!@#$%^&*...)"}), 400
     
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+    conn = None
     try:
         conn = get_db_connection()
         c = conn.cursor()
@@ -1437,7 +1439,6 @@ def register():
         else:
             c.execute("INSERT INTO users (email, password, role) VALUES (?, ?, ?)", (email, hashed_password, 'user'))
         conn.commit()
-        conn.close()
         logger.info(f"Nouvel utilisateur inscrit: {email}")
         return jsonify({"message": "Compte créé avec succès ! Vous pouvez maintenant vous connecter."}), 201
     except Exception as e:
@@ -1445,6 +1446,13 @@ def register():
             return jsonify({"error": "Cet email existe déjà."}), 400
         logger.error(f"Erreur inscription pour {email}: {str(e)}")
         return jsonify({"error": "Erreur lors de la création du compte."}), 400
+    finally:
+        # Garantit la fermeture de la connexion pour ne jamais verrouiller la base
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 @app.route('/login', methods=['POST', 'OPTIONS'])
 @app.route('/api/login', methods=['POST', 'OPTIONS'])
@@ -1457,14 +1465,22 @@ def login():
     if not email or not password:
         return jsonify({"error": "Veuillez entrer votre email et votre mot de passe."}), 400
     
-    conn = get_db_connection()
-    c = conn.cursor()
-    if DATABASE_URL:
-        c.execute("SELECT id, password, role FROM users WHERE email = %s", (email,))
-    else:
-        c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
-    user = c.fetchone()
-    conn.close()
+    conn = None
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        if DATABASE_URL:
+            c.execute("SELECT id, password, role FROM users WHERE email = %s", (email,))
+        else:
+            c.execute("SELECT id, password, role FROM users WHERE email = ?", (email,))
+        user = c.fetchone()
+    finally:
+        # Garantit la fermeture de la connexion pour ne jamais verrouiller la base
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
     
     if not user:
         logger.warning(f"Tentative de connexion échouée - email inconnu: {email} depuis {request.remote_addr}")

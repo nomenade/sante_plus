@@ -43,14 +43,15 @@
 
 /* ========== AUTH CARD (Compact) ========== */
 .auth-card {
-  background: rgba(255, 255, 255, 0.97);
+  background: #ffffff;
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
-  border-radius: 20px;
-  padding: 32px;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  border-radius: 18px;
+  padding: 26px 24px;
   width: 100%;
-  max-width: 380px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  max-width: 360px;
+  box-shadow: 0 20px 45px -15px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(5, 150, 105, 0.06);
   position: relative;
   z-index: 1;
   animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1);
@@ -70,36 +71,36 @@
 /* ========== HEADER ========== */
 .auth-header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .auth-logo {
-  width: 52px;
-  height: 52px;
+  width: 50px;
+  height: 50px;
   background: linear-gradient(135deg, #059669, #10b981);
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 12px;
+  margin: 0 auto 10px;
   color: white;
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.32), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .auth-logo svg {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
 }
 
 .auth-header h1 {
-  font-size: 22px;
-  font-weight: 300;
+  font-size: 21px;
+  font-weight: 800;
   color: #1a1a2e;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.4px;
 }
 
 .auth-header h1 strong {
-  font-weight: 700;
+  font-weight: 800;
   background: linear-gradient(135deg, #059669, #10b981);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -108,26 +109,26 @@
 
 .auth-header p {
   color: #6b7280;
-  font-size: 12px;
-  margin-top: 2px;
+  font-size: 12.5px;
+  margin-top: 3px;
 }
 
 /* ========== TABS ========== */
 .auth-tabs {
   display: flex;
   background: #f0fdf4;
-  border-radius: 10px;
-  padding: 3px;
-  margin-bottom: 20px;
-  gap: 3px;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 22px;
+  gap: 4px;
 }
 
 .auth-tab {
   flex: 1;
-  padding: 8px;
+  padding: 9px;
   border: none;
   background: transparent;
-  border-radius: 8px;
+  border-radius: 9px;
   font-size: 13px;
   font-weight: 600;
   color: #6b7280;
@@ -146,25 +147,36 @@
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 9px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
+/* Form fields — Facebook / Browse AI inspired: clean white inputs,
+   subtle borders, rounded corners, minimalist focus ring */
 .form-group label {
   font-size: 12px;
   font-weight: 600;
   color: #374151;
+  margin-bottom: 4px;
 }
 
 .input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
+  background: #ffffff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 9px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.input-wrapper:hover {
+  border-color: #d1d5db;
 }
 
 .input-icon {
@@ -174,29 +186,37 @@
   height: 16px;
   color: #9ca3af;
   pointer-events: none;
+  transition: color 0.2s ease;
 }
 
 .input-wrapper input {
   width: 100%;
-  padding: 10px 12px 10px 38px;
-  border: 2px solid #e5e7eb;
-  border-radius: 10px;
+  padding: 9px 10px 9px 38px;
+  border: none;
+  border-radius: 9px;
   font-size: 13px;
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  transition: all 0.3s ease;
-  background: #f9fafb;
+  background: transparent;
   outline: none;
   color: #1f2937;
+  transition: background 0.2s ease;
 }
 
 .input-wrapper input:focus {
-  border-color: #059669;
-  background: white;
-  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+  background: transparent;
 }
 
 .input-wrapper input::placeholder {
   color: #9ca3af;
+}
+
+.input-wrapper:focus-within {
+  border-color: #059669;
+  box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.14);
+}
+
+.input-wrapper:focus-within .input-icon {
+  color: #059669;
 }
 
 /* Password Toggle Button */
@@ -267,13 +287,13 @@ body.dark-mode .password-toggle:hover {
 
 /* ========== SUBMIT BUTTON ========== */
 .auth-submit {
-  padding: 11px;
+  padding: 10px;
   background: linear-gradient(135deg, #059669, #10b981);
   color: white;
   border: none;
   border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 700;
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -281,12 +301,13 @@ body.dark-mode .password-toggle:hover {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  width: 100%;
   margin-top: 4px;
 }
 
 .auth-submit:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.4);
+  box-shadow: 0 10px 24px rgba(5, 150, 105, 0.45), 0 0 0 1px rgba(16, 185, 129, 0.4);
 }
 
 .auth-submit:active:not(:disabled) {
@@ -375,19 +396,21 @@ body.dark-mode .auth-tab.active {
 }
 
 body.dark-mode .form-group label {
-  color: #94a3b8;
+  color: #cbd5e1;
+}
+
+body.dark-mode .input-wrapper {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+body.dark-mode .input-wrapper:hover {
+  border-color: #475569;
 }
 
 body.dark-mode .input-wrapper input {
-  background: #0f172a;
-  border-color: #334155;
+  background: transparent;
   color: #f1f5f9;
-}
-
-body.dark-mode .input-wrapper input:focus {
-  border-color: #10b981;
-  background: #0f172a;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
 body.dark-mode .input-wrapper input::placeholder {
@@ -396,6 +419,15 @@ body.dark-mode .input-wrapper input::placeholder {
 
 body.dark-mode .input-icon {
   color: #64748b;
+}
+
+body.dark-mode .input-wrapper:focus-within {
+  border-color: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18);
+}
+
+body.dark-mode .input-wrapper:focus-within .input-icon {
+  color: #10b981;
 }
 
 body.dark-mode .auth-message.success {
@@ -439,17 +471,18 @@ body.dark-mode .heartbeat {
   }
   
   .auth-logo {
-    width: 44px;
-    height: 44px;
+    width: 50px;
+    height: 50px;
+    border-radius: 15px;
   }
   
   .auth-logo svg {
-    width: 22px;
-    height: 22px;
+    width: 26px;
+    height: 26px;
   }
   
   .auth-header h1 {
-    font-size: 20px;
+    font-size: 23px;
   }
   
   .auth-form {
@@ -467,13 +500,14 @@ body.dark-mode .heartbeat {
   }
   
   .auth-logo {
-    width: 40px;
-    height: 40px;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
   }
   
   .auth-logo svg {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
   }
   
   .auth-tabs {
@@ -487,4 +521,34 @@ body.dark-mode .heartbeat {
   .auth-footer {
     margin-top: 14px;
   }
+}
+/* ---------- Bouton secondaire texte simple : Créer un compte / Me connecter ---------- */
+.auth-switch-btn {
+  display: inline;
+  width: auto;
+  padding: 0;
+  margin: 8px 0 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 12.5px;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.auth-switch-btn:focus {
+  outline: none;
+}
+.auth-switch-btn:hover {
+  color: #059669;
+}
+
+/* ---------- Mode sombre ---------- */
+body.dark-mode .auth-switch-btn {
+  color: #94a3b8;
+}
+body.dark-mode .auth-switch-btn:hover {
+  color: #10b981;
 }

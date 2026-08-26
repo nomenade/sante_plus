@@ -95,43 +95,69 @@
   justify-content: center;
 }
 .body-svg {
-  width: 180px;
+  width: 235px;
   height: auto;
   overflow: visible;
+  filter: drop-shadow(0 12px 20px rgba(15, 23, 42, 0.14));
 }
 .body-zone {
   cursor: pointer;
   outline: none;
 }
-.body-zone path,
-.body-zone circle,
-.body-zone rect {
-  fill: #e5e7eb;
-  stroke: #ffffff;
-  stroke-width: 2.5;
+.zone-skin {
+  fill: url(#gzSkin);
+  stroke: #cf9078;
+  stroke-width: 2;
   stroke-linejoin: round;
   stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-  transition: fill 0.2s ease, stroke 0.2s ease;
+  transition: stroke 0.2s ease, filter 0.2s ease;
 }
-.body-zone:hover path,
-.body-zone:hover circle,
-.body-zone:hover rect {
-  fill: #c7ecd4;
+.zone-tint {
+  fill: #10b981;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+.body-zone:hover .zone-tint {
+  opacity: 0.32;
+}
+.body-zone:hover .zone-skin {
+  stroke: #0d9488;
+}
+.body-zone.selected .zone-tint {
+  opacity: 0.55;
+}
+.body-zone.selected .zone-skin {
+  stroke: #047857;
+  stroke-width: 2.6;
+  filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.7));
+}
+.body-zone:focus-visible .zone-skin {
   stroke: #059669;
+  stroke-dasharray: 5 3;
+  stroke-width: 2;
 }
-.body-zone.selected path,
-.body-zone.selected circle,
-.body-zone.selected rect {
-  fill: #bbf7d0;         /* vert clair - zone cliquée */
-  stroke: #16a34a;
-  stroke-width: 3;
+/* Détails anatomiques décoratifs */
+.body-detail .detail-skin {
+  fill: url(#gzSkin);
+  stroke: #cf9078;
+  stroke-width: 1.4;
 }
-.body-zone:focus-visible path,
-.body-zone:focus-visible circle,
-.body-zone:focus-visible rect {
-  stroke: #059669;
-  stroke-dasharray: 4 3;
+.body-detail .detail-hair {
+  fill: #4a3728;
+  opacity: 0.92;
+}
+.body-detail .detail-lines {
+  fill: none;
+  stroke: #8a5a44;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  opacity: 0.38;
+}
+.body-detail .detail-lines circle {
+  fill: #8a5a44;
+  stroke: none;
+  opacity: 0.55;
 }
 .zone-legend {
   margin-top: 14px;
@@ -220,17 +246,24 @@
 .custom-row input {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 10px;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
   background: var(--bg-primary, #f0fdf4);
   font-size: 13px;
   color: var(--text-primary, #1a1a2e);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.custom-row input:hover {
+  border-color: #cbd5e1;
+  background: #ffffff;
 }
 .custom-row input:focus {
   border-color: #10b981;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
 }
 .add-symptom-btn {
   flex-shrink: 0;
@@ -467,18 +500,24 @@
 }
 .quick-custom input {
   flex: 1 1 auto;
-  padding: 9px 14px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  padding: 10px 16px;
+  border: 1.5px solid var(--border-color, #e2e8f0);
   border-radius: 999px;
   background: var(--bg-primary, #f0fdf4);
   color: var(--text-primary, #1a1a2e);
   font-size: 13px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.quick-custom input:hover {
+  border-color: #cbd5e1;
+  background: #ffffff;
 }
 .quick-custom input:focus {
   border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
 }
 .quick-custom-btn {
   padding: 9px 18px;
@@ -647,23 +686,32 @@
 .dashboard.dark-mode .suggestions-label {
   color: #94a3b8;
 }
-.dashboard.dark-mode .body-zone path,
-.dashboard.dark-mode .body-zone circle,
-.dashboard.dark-mode .body-zone rect {
-  fill: #334155;
-  stroke: #0f172a;
+.dashboard.dark-mode .body-svg {
+  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.45));
 }
-.dashboard.dark-mode .body-zone:hover path,
-.dashboard.dark-mode .body-zone:hover circle,
-.dashboard.dark-mode .body-zone:hover rect {
-  fill: #14532d;
+.dashboard.dark-mode .zone-skin {
+  fill: url(#gzSkinDark);
+  stroke: #7c4a35;
+}
+.dashboard.dark-mode .body-zone:hover .zone-skin {
+  stroke: #34d399;
+}
+.dashboard.dark-mode .body-zone.selected .zone-skin {
   stroke: #4ade80;
 }
-.dashboard.dark-mode .body-zone.selected path,
-.dashboard.dark-mode .body-zone.selected circle,
-.dashboard.dark-mode .body-zone.selected rect {
-  fill: #166534;
+.dashboard.dark-mode .body-zone:focus-visible .zone-skin {
   stroke: #4ade80;
+}
+.dashboard.dark-mode .body-detail .detail-skin {
+  fill: url(#gzSkinDark);
+  stroke: #7c4a35;
+}
+.dashboard.dark-mode .body-detail .detail-hair {
+  fill: #2b211b;
+}
+.dashboard.dark-mode .body-detail .detail-lines {
+  stroke: #e8b39a;
+  opacity: 0.3;
 }
 .dashboard.dark-mode .symptom-chip {
   background: #0f172a;

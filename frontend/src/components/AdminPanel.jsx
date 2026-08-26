@@ -177,6 +177,20 @@ function AdminPanel({ token, onBack }) {
           </table>
         </div>
       </section>
+
+      {/* Bouton « Haut de page » : toujours visible dans le backoffice aussi */}
+      <button
+        type="button"
+        className="scroll-top-btn"
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        title="Haut de page"
+        aria-label="Retour en haut de page"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="12" y1="19" x2="12" y2="5" />
+          <polyline points="5 12 12 5 19 12" />
+        </svg>
+      </button>
     </div>
   );
 }

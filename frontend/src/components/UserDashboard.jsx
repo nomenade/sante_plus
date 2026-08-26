@@ -10,10 +10,15 @@ const DEFAULT_PROFILE = {
 };
 
 // Déduit un nom affichable depuis l'email saisi au formulaire d'inscription/connexion
+// (sans les chiffres : "Santatra12@gmail.com" → "Santatra")
 function displayNameFromEmail(email) {
   if (!email) return 'Utilisateur';
   const local = email.split('@')[0];
-  const words = local.split(/[._\-+]+/).filter(Boolean);
+  const words = local
+    .split(/[._\-+]+/)
+    .filter(Boolean)
+    .map((w) => w.replace(/\d+/g, ''))
+    .filter(Boolean);
   const name = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   return name || 'Utilisateur';
 }
@@ -80,7 +85,16 @@ function UserDashboard({ userEmail }) {
     try {
       const saved = localStorage.getItem('santeUserProfile');
       const savedObj = saved ? JSON.parse(saved) : {};
-      return { ...DEFAULT_PROFILE, name: displayNameFromEmail(userEmail), ...savedObj };
+      const merged = { ...DEFAULT_PROFILE, ...savedObj };
+      // Nom TOUJOURS sans chiffres (ex. « Santatra12 » → « Santatra »),
+      // même s'il provient d'un profil sauvegardé avant correction
+      merged.name =
+        String(merged.name || '')
+          .split(/\s+/)
+          .map((w) => w.replace(/\d+/g, ''))
+          .filter(Boolean)
+          .join(' ') || displayNameFromEmail(userEmail);
+      return merged;
     } catch {
       return { ...DEFAULT_PROFILE, name: displayNameFromEmail(userEmail) };
     }

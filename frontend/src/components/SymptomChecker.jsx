@@ -17,55 +17,67 @@ function matchDiseaseByName(text) {
 }
 
 /* ============================================================
-   Zones anatomiques cliquables (figure humaine réaliste de face)
-   Corps segmenté avec arrondis pour un rendu proche d'un schéma
-   anatomique : cou, épaules/pontrine, abdomen, bassin, bras (haut
-   + avant-bras + main), jambes (cuisse + pied). Chaque zone est
-   cliquable et sélectionnable.
+   Zones anatomiques cliquables — silhouette humaine réaliste
+   (vue de face, tracé en courbes de Bézier haute résolution,
+   viewBox 360x760). Chaque zone est une forme dédiée qui
+   épouse l'anatomie ; le côté gauche est obtenu en reflétant
+   le côté droit sur l'axe central (x -> 360 - x).
    ============================================================ */
+const mirrorPath = (d) =>
+  d.replace(/(-?\d+(?:\.\d+)?)[ ,]+(-?\d+(?:\.\d+)?)/g, (_m, x, y) =>
+    `${(360 - parseFloat(x)).toFixed(1)} ${y}`
+  );
+
+// Membre supérieur droit (bras, avant-bras, main)
+const RD_BRAS = 'M246 196 C258 186 266 172 264 158 C276 168 284 186 286 208 C288 244 288 284 286 318 C280 330 268 332 258 326 C250 288 246 244 246 196 Z';
+const RD_AVANTBRAS = 'M258 326 C268 332 280 330 286 318 C292 356 296 400 298 442 C299 458 297 470 292 478 C282 484 268 484 260 478 C254 470 252 458 253 442 C255 400 256 356 258 326 Z';
+const RD_MAIN = 'M260 478 C268 484 282 484 292 478 C296 492 300 508 304 524 C306 534 306 544 302 550 C300 558 296 560 292 558 C290 562 286 563 283 559 C280 563 276 563 274 558 C270 562 266 561 264 556 C258 546 256 532 257 518 C258 504 259 490 260 478 Z';
+// Membre inférieur droit (cuisse + mollet, pied)
+const RD_JAMBE = 'M250 424 C252 470 250 520 240 570 C234 592 232 606 234 620 C238 646 234 668 224 686 C216 694 204 696 196 690 C192 668 192 646 196 624 C200 600 198 570 192 545 C188 512 184 470 181 452 C204 452 228 444 242 434 C245 430 248 427 250 424 Z';
+const RD_PIED = 'M224 686 C232 692 240 698 246 706 C252 716 252 728 246 734 C238 742 220 744 208 740 C200 736 196 726 196 716 C196 706 198 696 204 690 C210 686 218 684 224 686 Z';
+
+// Ordre de peinture : jambes derrière, torse puis tête devant
 const BODY_ZONES = [
-  // Tête (cercle)
-  { id: 'tete', label: 'Tête', node: <circle cx="110" cy="32" r="24" /> },
-  // Cou
-  { id: 'cou', label: 'Cou', node: <rect x="101" y="42" width="18" height="22" rx="7" /> },
-  // Poitrine (épaules et buste supérieur, rentrant à la taille)
-  {
-    id: 'poitrine',
-    label: 'Poitrine',
-    node: <path d="M84 62 L136 62 L126 94 L96 100 L90 96 L84 90 L84 110 L80 112 L82 140 L96 142 L126 142 Z" />
-  },
-  // Abdomen (buste inférieur, avant de la taille)
-  {
-    id: 'abdomen',
-    label: 'Abdomen',
-    node: <path d="M96 140 L126 140 L124 176 L98 176 Z" />
-  },
-  // Bassin (hanches / pelvis)
+  // Jambes + pieds
+  { id: 'jambeG', label: 'Jambe gauche', d: mirrorPath(RD_JAMBE) },
+  { id: 'piedG', label: 'Pied gauche', d: mirrorPath(RD_PIED) },
+  { id: 'jambeD', label: 'Jambe droite', d: RD_JAMBE },
+  { id: 'piedD', label: 'Pied droit', d: RD_PIED },
+  // Bras + mains
+  { id: 'brasG', label: 'Bras gauche (haut)', d: mirrorPath(RD_BRAS) },
+  { id: 'avantBrasG', label: 'Avant-bras gauche', d: mirrorPath(RD_AVANTBRAS) },
+  { id: 'mainG', label: 'Main gauche', d: mirrorPath(RD_MAIN) },
+  { id: 'brasD', label: 'Bras droit (haut)', d: RD_BRAS },
+  { id: 'avantBrasD', label: 'Avant-bras droit', d: RD_AVANTBRAS },
+  { id: 'mainD', label: 'Main droite', d: RD_MAIN },
+  // Tronc
   {
     id: 'bassin',
     label: 'Bassin',
-    node: <path d="M98 176 L124 176 L134 200 L88 200 Z" />
+    d: 'M126 386 C144 394 162 397 180 397 C198 397 216 394 234 386 C242 400 248 412 250 424 C240 442 214 452 180 452 C146 452 120 442 110 424 C112 412 118 400 126 386 Z'
   },
-  // Bras gauche - haut du bras (épaule -> coude)
-  { id: 'brasG', label: 'Bras gauche (haut)', node: <rect x="70" y="64" width="20" height="58" rx="9" /> },
-  // Avant-bras gauche
-  { id: 'avantBrasG', label: 'Avant-bras gauche', node: <rect x="72" y="122" width="18" height="60" rx="8" /> },
-  // Main gauche
-  { id: 'mainG', label: 'Main gauche', node: <rect x="73" y="182" width="15" height="24" rx="6" /> },
-  // Bras droit du haut
-  { id: 'brasD', label: 'Bras droit (haut)', node: <rect x="128" y="64" width="22" height="66" rx="9" /> },
-  // Avant-bras droit
-  { id: 'avantBrasD', label: 'Avant-bras droit', node: <rect x="130" y="122" width="18" height="60" rx="8" /> },
-  // Main droite
-  { id: 'mainD', label: 'Main droite', node: <rect x="132" y="182" width="15" height="24" rx="6" /> },
-  // Jambe gauche (cuisse + tibia)
-  { id: 'jambeG', label: 'Jambe gauche', node: <rect x="86" y="202" width="28" height="140" rx="11" /> },
-  // Pied gauche
-  { id: 'piedG', label: 'Pied gauche', node: <rect x="82" y="342" width="36" height="26" rx="8" /> },
-  // Jambe droite
-  { id: 'jambeD', label: 'Jambe droite', node: <rect x="112" y="202" width="28" height="140" rx="11" /> },
-  // Pied droit
-  { id: 'piedD', label: 'Pied droit', node: <rect x="102" y="342" width="36" height="26" rx="8" /> }
+  {
+    id: 'abdomen',
+    label: 'Abdomen',
+    d: 'M124 300 C140 308 160 311 180 311 C200 311 220 308 236 300 C235 330 234 358 232 386 C214 394 196 397 180 397 C164 397 146 394 128 386 C126 358 125 330 124 300 Z'
+  },
+  {
+    id: 'poitrine',
+    label: 'Poitrine',
+    d: 'M96 158 C118 140 148 132 180 132 C212 132 242 140 264 158 C262 176 256 190 246 196 C244 232 240 268 236 300 C220 308 200 311 180 311 C160 311 140 308 124 300 C120 268 116 232 114 196 C104 190 98 176 96 158 Z'
+  },
+  // Cou (avec trapèzes)
+  {
+    id: 'cou',
+    label: 'Cou',
+    d: 'M162 100 C165 112 167 120 165 128 C152 134 134 139 118 148 L118 160 C138 152 160 149 180 149 C200 149 222 152 242 160 L242 148 C226 139 208 134 195 128 C193 120 195 112 198 100 C192 105 187 107 180 107 C173 107 168 105 162 100 Z'
+  },
+  // Tête
+  {
+    id: 'tete',
+    label: 'Tête',
+    d: 'M180 18 C203 18 217 34 217 57 C217 76 209 92 197 101 C191 106 186 109 180 109 C174 109 169 106 163 101 C151 92 143 76 143 57 C143 34 157 18 180 18 Z'
+  }
 ];
 
 /* ============================================================
@@ -186,62 +198,109 @@ const DEFAULT_URGENCY = {
 
 
 /* ============================================================
-   Analyse : calcule les hypothèses classées par probabilité.
-   Le résultat est compatible avec les symptômes ET avec la carte
-   anatomique (zones sélectionnées) : une hypothèse dont les
-   symptômes se situent dans les zones choisies est favorisée.
+   Analyse : calcule les hypothèses classées par COMPATIBILITÉ
+   avec les symptômes signalés (et la carte anatomique).
+
+   Améliorations :
+   • Pondération par SPÉCIFICITÉ : un symptôme rare (morsure,
+     perte du goût…) est bien plus révélateur qu'un symptôme
+     commun (fièvre présente dans 15 profils).
+   • Normalisation RELATIVE : la maladie la plus compatible
+     sert de référence (~94 %), les autres sont proportionnées —
+     les pourcentages se lisent comme un classement clair.
    ============================================================ */
+
+// Nombre de maladies utilisant chaque symptôme (pour la spécificité)
+const SYMPTOM_FREQ = {};
+DISEASE_RULES.forEach((r) => r.symptoms.forEach((s) => {
+  SYMPTOM_FREQ[s] = (SYMPTOM_FREQ[s] || 0) + 1;
+}));
+// Plus un symptôme est rare, plus il est spécifique (poids élevé)
+const specificityOf = (s) => 1 / Math.sqrt(SYMPTOM_FREQ[s] || 1);
+
 function runAnalysis(selectedIds, selectedZoneIds) {
   const set = new Set(selectedIds);
   const zones = new Set(selectedZoneIds || []);
   const totalReported = set.size;
-  const hasZones = zones.size > 0;
 
-  const items = DISEASE_RULES
+  // --- 1er passage : score brut pondéré de chaque candidat ---
+  const raws = DISEASE_RULES
     .map((rule) => {
       const matchedIds = rule.symptoms.filter((s) => set.has(s));
-      const matched = matchedIds.length;
-      if (matched === 0) return null;
+      if (matchedIds.length === 0) return null;
 
       const total = rule.symptoms.length;
-      const coverage = total > 0 ? matched / total : 0;
+
+      // Couverture PONDÉRÉE du profil type : les symptômes spécifiques
+      // comptent plus que les symptômes génériques
+      let matchedWeight = 0;
+      let maxWeight = 0;
+      rule.symptoms.forEach((s) => {
+        const w = specificityOf(s);
+        maxWeight += w;
+        if (set.has(s)) matchedWeight += w;
+      });
+      const coverageW = maxWeight > 0 ? matchedWeight / maxWeight : 0;
 
       // Compatibilité anatomique calculée sur les symptômes réellement
-      // signalés (matched) : un symptôme général convient toujours, un
-      // symptôme localisé ne valide que si l'une de ses zones corporelles
-      // fait partie des zones sélectionnées sur la carte.
+      // signalés : un symptôme général convient toujours, un symptôme
+      // localisé ne valide que si sa zone est sélectionnée sur la carte.
       let zoneCoverage = 0.5;
-      if (hasZones && matched > 0) {
+      if (zones.size > 0) {
         const scores = matchedIds.map((s) => {
           const loc = SYMPTOM_ZONES[s];
           if (!loc || loc.length === 0) return 0.5;
           return loc.some((z) => zones.has(z)) ? 1 : 0;
         });
-        zoneCoverage = scores.reduce((a, b) => a + b, 0) / matched;
+        zoneCoverage = scores.reduce((a, b) => a + b, 0) / matchedIds.length;
       }
 
-      // Fiabilité : la couverture des symptômes types de la maladie prime,
-      // fortement renforcée par la concordance avec la carte anatomique et
-      // le nombre total de symptômes signalés.
-      const infoConfidence = Math.min(1, totalReported / 4);
-      let probability = 12 + 54 * Math.pow(coverage, 0.6) + 24 * zoneCoverage + 10 * infoConfidence;
-      if (coverage >= 0.8) probability += 6; // presque tous les symptômes types => très probable
-      else if (coverage >= 0.6) probability += 3;
+      // Symptôme « signature » : le plus spécifique présent est un fort indice
+      const signature = Math.max(...matchedIds.map(specificityOf));
+
+      // Richesse du signalement : plus la description est complète, plus c'est fiable
+      const richness = Math.min(1, totalReported / 4);
+
+      const raw =
+        coverageW * 60 +           // cœur : ressemblance au profil type
+        signature * 14 +           // indice fort : symptôme très révélateur présent
+        zoneCoverage * 16 +        // cohérence avec la carte anatomique
+        richness * 6 +             // description assez complète
+        (matchedIds.length >= 3 ? 4 : 0);
 
       return {
         disease: rule.disease,
         urgency: rule.urgency,
-        matched,
+        matched: matchedIds.length,
         total,
         matchedIds,
         zoneCoverage: Math.round(zoneCoverage * 100),
-        probability: Math.round(Math.max(10, Math.min(96, probability)))
+        raw
       };
     })
-    .filter(Boolean)
-    .sort((a, b) => b.probability - a.probability);
+    .filter(Boolean);
 
-  return items;
+  if (raws.length === 0) return [];
+
+  // --- 2e passage : normalisation RELATIVE des pourcentages ---
+  const topRaw = Math.max(...raws.map((r) => r.raw));
+  return raws
+    .sort((a, b) => b.raw - a.raw)
+    .map((r) => {
+      let p = topRaw > 0 ? (r.raw / topRaw) * 94 : 10;
+      // Planchers honnêtes selon la force de correspondance
+      const floor = r.matched >= 3 ? 24 : r.matched === 2 ? 15 : 8;
+      p = Math.max(floor, Math.min(96, p));
+      return {
+        disease: r.disease,
+        urgency: r.urgency,
+        matched: r.matched,
+        total: r.total,
+        matchedIds: r.matchedIds,
+        zoneCoverage: r.zoneCoverage,
+        probability: Math.round(p)
+      };
+    });
 }
 
 function severityLabel(urgency) {
@@ -366,6 +425,13 @@ function SymptomChecker() {
       showToast('Sélectionnez au moins un symptôme', 'error');
       return;
     }
+    // Statistique d'usage réelle : une consultation de plus pour le tableau de bord
+    try {
+      localStorage.setItem(
+        'santeConsultCount',
+        String((parseInt(localStorage.getItem('santeConsultCount') || '0', 10) || 0) + 1)
+      );
+    } catch { /* noop */ }
     runAnalysisFlow(buildEffectiveIds(customSymptoms));
   };
 
@@ -435,7 +501,20 @@ function SymptomChecker() {
           </div>
 
           <div className="body-map">
-            <svg viewBox="0 0 220 380" className="body-svg">
+            <svg viewBox="0 0 360 760" className="body-svg">
+              <defs>
+                <linearGradient id="gzSkin" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ffe3d0" />
+                  <stop offset="45%" stopColor="#ffcdb2" />
+                  <stop offset="100%" stopColor="#f0ac91" />
+                </linearGradient>
+                <linearGradient id="gzSkinDark" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#d9a68c" />
+                  <stop offset="50%" stopColor="#c98b74" />
+                  <stop offset="100%" stopColor="#b06f58" />
+                </linearGradient>
+              </defs>
+
               {BODY_ZONES.map((z) => {
                 const isSelected = selectedZones.includes(z.id);
                 return (
@@ -448,11 +527,41 @@ function SymptomChecker() {
                     aria-label={z.label}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleZone(z.id); }}
                   >
-                    {z.node}
+                    <path className="zone-skin" d={z.d} />
+                    <path className="zone-tint" d={z.d} />
                     <title>{z.label}</title>
                   </g>
                 );
               })}
+
+              {/* Détails anatomiques décoratifs (non cliquables) */}
+              <g className="body-detail" aria-hidden="true">
+                {/* Oreilles */}
+                <ellipse className="detail-skin" cx="141" cy="61" rx="6" ry="10" />
+                <ellipse className="detail-skin" cx="219" cy="61" rx="6" ry="10" />
+                {/* Cheveux */}
+                <path className="detail-hair" d="M143 52 C145 30 160 19 180 19 C200 19 215 30 217 52 C205 41 190 37 180 37 C170 37 155 41 143 52 Z" />
+                {/* Traits du visage */}
+                <g className="detail-lines">
+                  <path d="M164 58 C168 54 174 54 177 57" />
+                  <path d="M183 57 C186 54 192 54 196 58" />
+                  <path d="M170 88 C175 92 185 92 190 88" />
+                </g>
+                {/* Clavicules, sternum, pectoraux, nombril */}
+                <g className="detail-lines">
+                  <path d="M138 170 C158 179 202 179 222 170" />
+                  <path d="M180 186 L180 252" />
+                  <path d="M136 240 C158 254 202 254 224 240" />
+                  <circle cx="180" cy="360" r="3" />
+                </g>
+                {/* Rotules et coudes */}
+                <g className="detail-lines">
+                  <path d="M206 600 C213 593 227 593 234 600" />
+                  <path d="M126 600 C133 593 147 593 154 600" />
+                  <path d="M262 318 C268 314 276 314 282 318" />
+                  <path d="M78 318 C84 314 92 314 98 318" />
+                </g>
+              </g>
             </svg>
           </div>
 
@@ -602,7 +711,7 @@ function SymptomChecker() {
                     <div className="prob-bar">
                       <span style={{ width: `${item.probability}%` }}></span>
                     </div>
-                    <span className="prob-label">Probabilité estimée</span>
+                    <span className="prob-label">Compatibilité avec vos symptômes</span>
 
                     {result.source === 'analysis' && item.matchedSymptoms?.length > 0 && (
                       <div className="matched-symptoms">

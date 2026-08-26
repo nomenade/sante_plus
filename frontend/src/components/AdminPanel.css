@@ -258,3 +258,49 @@
     text-align: center;
   }
 }
+
+/* ---------- Bouton « Haut de page » toujours visible (backoffice) ---------- */
+.scroll-top-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #ffffff;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45);
+  z-index: 150;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: scrollTopIn 0.4s ease both, scrollTopPulse 2.6s infinite;
+}
+.scroll-top-btn svg { width: 22px; height: 22px; }
+.scroll-top-btn:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 10px 26px rgba(5, 150, 105, 0.55);
+}
+.scroll-top-btn:active {
+  transform: translateY(-1px) scale(0.97);
+}
+@keyframes scrollTopIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scrollTopPulse {
+  0%   { box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45), 0 0 0 0 rgba(16, 185, 129, 0.35); }
+  60%  { box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45), 0 0 0 13px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45), 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+@media (max-width: 520px) {
+  .scroll-top-btn {
+    bottom: 16px;
+    right: 16px;
+    width: 46px;
+    height: 46px;
+  }
+}

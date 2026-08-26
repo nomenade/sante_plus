@@ -503,16 +503,24 @@
   color: var(--text-secondary, #4b5563);
 }
 .profile-form input {
-  padding: 10px 12px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  border-radius: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
   background: var(--bg-primary, #f0fdf4);
-  font-size: 13.5px;
+  font-size: 14px;
   color: var(--text-primary, #1a1a2e);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.profile-form input:hover {
+  border-color: #cbd5e1;
+  background: #ffffff;
 }
 .profile-form input:focus {
   border-color: #10b981;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
 }
 .profile-form input:disabled {
   opacity: 0.6;

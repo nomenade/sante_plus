@@ -214,24 +214,35 @@ function listFr(arr) {
   return `${arr.slice(0, -1).join(', ')} et ${arr[arr.length - 1]}`;
 }
 
-// Dialogues sociaux (accueil, remerciements, au revoir) - formulés différemment
+// Dialogues sociaux façon GROK : chaleureux, direct, conversationnel
+// (accueil, « ça va ? », « quoi de neuf ? », remerciements, au revoir)
 const DIALOGUES = {
   greeting: [
-    "Bonjour ! Comment puis-je vous aider ? Décrivez-moi ce que vous ressentez (symptômes, depuis quand, intensité...).",
-    "Bonjour et bienvenue ! Quels symptômes ressentez-vous ? Donnez-moi le maximum de précisions pour mieux vous orienter.",
-    "Salut ! Je suis là pour vous écouter. Qu'est-ce qui vous amène aujourd'hui ? Décrivez-moi vos symptômes.",
-    "Bonjour ! En quoi puis-je vous aider ? N'hésitez pas à me dire ce que vous ressentez."
+    "Bonjour ! 😊 Ça va très bien, merci ! Et vous, quoi de neuf ? Racontez-moi ce qui vous amène aujourd'hui.",
+    "Salut, ça va ? Moi ça roule ! Quoi de neuf de votre côté ? Comment puis-je vous aider ?",
+    "Hey, bonjour ! 👋 Tout va bien pour moi. Alors, quoi de neuf ? Parlez-moi de vous !",
+    "Bonjour à vous ! Ça fait plaisir. Quoi de neuf aujourd'hui ? Je vous écoute."
+  ],
+  howAreYou: [
+    "Ça va super bien, merci de demander ! 😄 Et vous, comment vous sentez-vous aujourd'hui ?",
+    "Je vais très bien, merci ! Plus important : comment VOUS allez-vous ? Quoi de neuf ?",
+    "Moi ça va nickel ! Mais parlons plutôt de vous : tout va bien ?"
+  ],
+  whatsNew: [
+    "De mon côté, tout est calme par ici ! 😊 Ce qui est nouveau, c'est vous : qu'est-ce qui se passe dans votre vie ? Rien de nouveau en santé j'espère ?",
+    "Rien de bien nouveau pour moi, je suis toujours prêt à aider ! Et de votre côté, quoi de neuf ? Tout va bien niveau santé ?",
+    "Pas grand-chose de neuf ici ! Par contre, j'adorerais savoir ce qui se passe chez vous. Des nouvelles ?"
   ],
   thanks: [
-    "Je vous en prie. N'hésitez pas si vous avez d'autres questions. En cas d'aggravation, consultez rapidement un professionnel de santé.",
-    "Avec plaisir ! Restez à l'écoute de votre corps. En cas d'urgence, appelez le 15 (SAMU).",
-    "De rien ! Je reste disponible si vous avez besoin d'un conseil.",
-    "Avec plaisir ! Prenez soin de vous et surveillez l'évolution de vos symptômes."
+    "Avec plaisir ! 😊 N'hésitez pas si vous avez d'autres questions. En cas d'aggravation, consultez rapidement un professionnel de santé.",
+    "Je vous en prie ! Restez à l'écoute de votre corps. En cas d'urgence, appelez le 15 (SAMU).",
+    "De rien ! Je reste dispo si besoin. Prenez soin de vous ! 💚",
+    "Mais je vous en prie ! Revenez quand vous voulez, je serai là."
   ],
   bye: [
-    "Prenez soin de vous. À bientôt et bonne santé !",
-    "Au revoir ! N'oubliez pas : en cas de doute, consultez un médecin.",
-    "À bientôt ! Si vos symptômes persistent, n'hésitez pas à revenir."
+    "Prenez soin de vous ! À bientôt et bonne santé ! 👋",
+    "Au revoir ! N'oubliez pas : en cas de doute, consultez un médecin. À la prochaine !",
+    "À bientôt ! Si vos symptômes persistent, n'hésitez pas à revenir me voir. Bonne journée !"
   ],
   ask: [
     "Pour mieux vous aider, décrivez-moi précisément ce que vous ressentez (ex. fièvre, vomissements, douleurs...).",
@@ -451,15 +462,92 @@ function generateAiReply(currentMessage, hypotheses, history) {
   const previousSymptoms = extractSymptoms(previousText);
   const newSymptoms = symptomsNow.filter((s) => !previousSymptoms.includes(s));
 
-  // 1) Échanges sociaux simples (uniquement si aucun symptôme n'est mentionné,
-  //    pour ne jamais ignorer une description : "Bonjour, j'ai des vomissements"
-  //    doit être traité comme un message médical et non comme une salutation)
+  // 0) Photo / vidéo jointe avec texte court ou vide : on accuse réception de
+  //    façon naturelle et variée (jamais la même formulation qu'une fois déjà utilisée)
+  if (history && history.hasAttachment && t.trim().length < 60) {
+    const mediaLabel = history.attachmentType === 'video' ? 'votre vidéo' : 'votre photo';
+    const mediaReplies = [
+      `J'ai bien reçu ${mediaLabel}, merci 😊. Pouvez-vous me décrire en quelques mots ce que l'on y voit et les symptômes que vous ressentez (fièvre, douleur, éruption...) ?`,
+      `Votre ${mediaLabel} est bien arrivée ! Pour vous aider au mieux, dites-moi depuis quand cela dure et quels sont vos symptômes précis.`,
+      `Merci pour ${mediaLabel} — je la garde en compte. Décrivez-moi aussi en texte les signes ou douleurs que vous observez.`
+    ];
+    const unusedMedia = mediaReplies.filter((r) => !aiPast.includes(r.toLowerCase()));
+    return pick(unusedMedia.length ? unusedMedia : mediaReplies);
+  }
+
+  // 1) Échanges sociaux simples façon Grok (uniquement si aucun symptôme n'est
+  //    mentionné, pour ne jamais ignorer une description : "Bonjour, j'ai des
+  //    vomissements" doit être traité comme un message médical et non comme une
+  //    salutation)
   if (symptomsNow.length === 0) {
-    const isGreeting = /^(bonjour|salut|bonsoir|hello|cc|coucou)\b/.test(t) && t.trim().length < 25;
+    const isGreeting = /^(bonjour|salut|bonsoir|hello|cc|coucou|hey|yo|wesh)\b/.test(t) && t.trim().length < 30;
     if (isGreeting) return pickUnused(DIALOGUES.greeting, aiPast);
     if (/\bmerci\b/.test(t) && t.trim().length < 40) return pickUnused(DIALOGUES.thanks, aiPast);
     if (/(au revoir|a bientôt|bye|adieu)/.test(t) && t.trim().length < 40) return pickUnused(DIALOGUES.bye, aiPast);
-    if (/comment (tu vas|ça va)/.test(t)) return "Je suis là pour vous écouter ! Comment vous sentez-vous aujourd'hui ?";
+    // « ça va ? », « comment vas-tu ? », « vous allez bien ? »...
+    if (/(ca va|ça va|comment (vas[- ]tu|allez[- ]vous|tu vas|vous allez|ca marche|ça marche)|tu (vas|portes) bien|vous (allez|portez) bien|(tout )?va bien( chez toi| chez vous)?|la forme)/.test(t) && t.trim().length < 60) {
+      return pickUnused(DIALOGUES.howAreYou, aiPast);
+    }
+    // « quoi de neuf ? », « des nouvelles ? »...
+    if (/(quoi de neuf|du nouveau|des nouvelles|nouveautes|nouveautés|raconte)/.test(t) && t.trim().length < 45) {
+      return pickUnused(DIALOGUES.whatsNew, aiPast);
+    }
+  }
+
+  // 1bis) Questions d'information sur une maladie (« c'est quoi le paludisme ? »,
+  //    « la typhoïde c'est grave ? », « comment soigner la gastro ? »...) :
+  //    on répond au DISCOURS de l'utilisateur, pas seulement à ses symptômes.
+  const asksInfo = /(c'?est quoi|qu est ce que|qu'est-ce que|parle[- ]?moi (de|du|des)|des infos|des informations|c'?est grave|est[- ]ce grave|comment soigner|comment traiter|quel(le)?s? traitements?|comment prevenir|comment prévenir|cause[s]? de|pourquoi on attrape|symptomes de|symptômes de|connais[- ]tu)/.test(t);
+  const personal = /\b(j'ai|j ai|je ressens|je souffre|mon |ma |mes |j'ai tres mal)\b/.test(t);
+  if (asksInfo && (!personal || symptomsNow.length === 0)) {
+    const wanted = normalizeFr(t);
+    let asked = null;
+    Object.keys(DISEASE_PROFILES).forEach((k) => {
+      if (!asked && wanted.includes(normalizeFr(k))) asked = k;
+    });
+    if (asked) {
+      const prof = DISEASE_PROFILES[asked];
+      const info = prof
+        ? pickUnused(prof.analysis, aiPast)
+        : `${asked} est une maladie qu'il ne faut pas prendre à la légère.`;
+      return `${info} Si vous pensez être concerné(e), décrivez-moi vos symptômes précis (et depuis quand ils durent), je vous orienterai au mieux.`;
+    }
+  }
+
+  // 1ter) L'utilisateur parle de l'assistant ou exprime une émotion : réponse
+  //    conversationnelle adaptée (identité, capacités, réassurance...).
+  if (/(qui (es|êtes)[ -]?(tu|vous)|tu es qui|vous êtes qui|(ton |votre )nom\b)/.test(t) && symptomsNow.length === 0) {
+    return pickUnused([
+      "Je suis votre assistant santé sur Santé+ : je vous écoute, je pose des questions sur vos symptômes et je vous oriente vers les bons réflexes.",
+      "Ici, c'est moi qui m'occupe de vous ! Décrivez-moi ce que vous ressentez et je vous aide à y voir plus clair."
+    ], aiPast);
+  }
+  if (/(robot|intelligence artificielle|\bia\b|vraie personne|un humain|etre humain|être humain|vrai médecin|véritable médecin|docteur reel)/.test(t) && t.length < 90) {
+    return pickUnused([
+      "Je suis là pour vous accompagner au quotidien sur Santé+, disponible 24h/24. Mes conseils restent indicatifs : en cas de doute sérieux, consultez un professionnel. Parlons de vous, quels sont vos symptômes ?",
+      "Considérez-moi comme votre compagnon santé de confiance ! Je ne remplace pas un médecin, mais je peux vous aider à préciser ce que vous ressentez."
+    ], aiPast);
+  }
+  if (/(que (peux|sais)[ -]?tu|tu fais quoi|tu sers a quoi|à quoi (tu sers|servez)|comment (ca marche|ça marche|tu fonctionnes|tu marches)|tes fonctions|comment (t')utiliser|comment utiliser)/.test(t) && t.length < 90) {
+    return pickUnused([
+      "Je peux discuter avec vous de vos symptômes en langage courant, proposer des pistes (paludisme, typhoïde, gastro...), donner des conseils alimentaires et vous alerter si c'est urgent. Vous pouvez aussi m'envoyer une photo. Alors, quels sont vos symptômes ?",
+      "Décrivez-moi simplement ce que vous ressentez (ex. « fièvre et frissons depuis 2 jours ») : je pose des questions, j'établis des hypothèses et je vous donne de premiers conseils pratiques."
+    ], aiPast);
+  }
+  if (/quel(le)?s? ?(âge|age|annee|année)s?( as[- ]tu| avez[- ]vous)?/.test(t)) {
+    return "Je n'ai pas d'âge — je suis un assistant numérique disponible 24h/24 ! L'important, c'est vous : comment vous sentez-vous aujourd'hui ?";
+  }
+  if (/(j'ai peur|j ai peur|je suis (inquiet|inquiete|stressé|stresse|anxieux|anxieuse)|je panique|(ca|ça|cela) m'inquiete|m'inquiète beaucoup|fait peur)/.test(t)) {
+    return pickUnused([
+      "Je comprends votre inquiétude, c'est tout à fait normal. Respirez un bon coup : décrivez-moi calmement ce que vous ressentez et depuis combien de temps, et on regarde ça ensemble.",
+      "Ne restez pas seul(e) face à vos inquiétudes : je suis là. Racontez-moi précisément ce que vous observez ; si c'est sérieux, je vous dirai clairement d'aller consulter."
+    ], aiPast);
+  }
+  if (/\bet (toi|vous)\b/.test(t) && t.length < 30) {
+    return pickUnused([
+      "Moi, ça va très bien, merci ! 😄 Mais l'important ici, c'est vous : quels symptômes ressentez-vous en ce moment ?",
+      "Moi je pète la forme ! Et vous alors, quoi de neuf ? Comment vous sentez-vous ?"
+    ], aiPast);
   }
 
   // 2) Réponse oui / non à une question posée précédemment (discussion continue)
@@ -547,18 +635,29 @@ function detectHypotheses(text) {
 const nowTime = () =>
   new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
+// Suggestions rapides : un simple clic envoie le message à Grok.
+// Rend le chatbot immédiat, facile et agréable à utiliser.
+const QUICK_CHIPS = [
+  'Bonjour 👋',
+  'Ça va ?',
+  'Quoi de neuf ?',
+  "J'ai de la fièvre",
+  'Mal de tête'
+];
+
 function Chatbot() {
   const [messages, setMessages] = useState([
     {
       id: 1,
       role: 'ai',
       time: nowTime(),
-      text: "Bonjour ! Je suis l'Assistant Santé Intelligent de Santé+. Décrivez vos symptômes en détail et je vous répondrai selon votre cas."
+      text: "Bonjour ! 👋 Comment vous sentez-vous aujourd'hui ? Décrivez-moi vos symptômes en détail — ou discutons simplement, je suis là pour vous !"
     }
   ]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const [listening, setListening] = useState(false);
+  const [attachment, setAttachment] = useState(null); // photo / vidéo à joindre
   const [advice, setAdvice] = useState(null); // modal « fiche de conseil »
   const [adviceLoading, setAdviceLoading] = useState(false);
   const [adviceError, setAdviceError] = useState('');
@@ -566,6 +665,8 @@ function Chatbot() {
 
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Texte de l'ensemble de la conversation (messages utilisateur) pour les hypothèses
   const conversationText = messages
@@ -593,29 +694,319 @@ function Chatbot() {
     };
   }, []);
 
+  /* ---------- Pièce jointe (photo / vidéo) ---------- */
+  const handleFileSelect = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      const type = file.type.startsWith('video/') ? 'video' : 'image';
+      setAttachment({ type, name: file.name, url: URL.createObjectURL(file) });
+    }
+    e.target.value = '';
+  };
+  const removeAttachment = () => {
+    if (attachment && attachment.url) URL.revokeObjectURL(attachment.url);
+    setAttachment(null);
+  };
+
+  /* ------------------------------------------------------------
+     IA visuelle (optionnelle) — si une clé VITE_OPENAI_API_KEY est
+     configurée dans le .env du frontend, la photo/vidéo est envoyée
+     à un modèle multimodal (gpt-4o-mini) qui décrit ce qu'il voit
+     et répond selon le besoin réel de l'utilisateur.
+     Sans clé, on retombe sur le moteur de règles local.
+     ------------------------------------------------------------ */
+  const buildImageDataUrl = async (att) => {
+    try {
+      const res = await fetch(att.url);
+      const blob = await res.blob();
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result); // data URL base64
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  };
+
+  const generateVisionReply = async (text, att, history) => {
+    const apiKey = (import.meta.env.VITE_OPENAI_API_KEY || '').trim();
+    if (!apiKey || !att) return null;
+
+    const dataUrl = await buildImageDataUrl(att);
+    if (!dataUrl) return null;
+
+    const past = (history && history.aiMessages) || [];
+    const previousText = (history && history.previousText) || '';
+    const content = [];
+
+    if (dataUrl.startsWith('video')) {
+      content.push({ type: 'text', text: `L'utilisateur a joint une vidéo intitulée « ${att.name} ». ` });
+    } else {
+      content.push({ type: 'text', text: 'Photo de l\'utilisateur (à analyser).' });
+      content.push({ type: 'image_url', image_url: { url: dataUrl } });
+    }
+
+    const userPrompt = `Historique des échanges précédents de l'utilisateur :\n${previousText || '(aucun)'}\n\nNouveau message de l'utilisateur :\n${text || '(photo uniquement)'}\n\nAnalysez cette photo/vidéo et répondez en français, de façon médicalement prudente et utile : décrivez ce que vous observez si possible, puis répondez précisément à la question/situation de l'utilisateur. Terminez toujours par « Consultez un médecin si les symptômes persistent ou s'aggravent. »`;
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 45000);
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          max_tokens: 600,
+          messages: [
+            {
+              role: 'system',
+              content: `Tu es l'Assistant Santé Intelligent de l'application Santé+. Tu aides les utilisateurs à comprendre leurs symptômes et leurs photos médicales. Tu ne poses jamais de diagnostic définitif : tu donnes des conseils généraux et tu recommandes de consulter un professionnel de santé si besoin. Réponds en français, de façon claire et structurée.`
+            },
+            ...past.map((p) => ({ role: 'assistant', content: p })),
+            { role: 'user', content }
+          ]
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      const answer = data.choices?.[0]?.message?.content?.trim();
+      return answer || null;
+    } catch {
+      return null;
+    }
+  };
+
+  /* ------------------------------------------------------------
+     IA de conversation générale — GROQ (ultra-rapide, Llama 3.3)
+     Si VITE_GROQ_API_KEY est configurée, TOUT le discours passe
+     par un grand modèle de langage : discussion libre sur la santé,
+     mais aussi vie quotidienne, études, sport, culture... bref
+     une vraie conversation, pas seulement les symptômes.
+     Sans clé ou en cas d'erreur → moteur de règles local.
+     ------------------------------------------------------------ */
+  const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+  /* ------------------------------------------------------------
+     GROK — l'IA qui répond aux utilisateurs (api.x.ai)
+     Personnalité : chaleureuse, directe et conversationnelle.
+     Elle répond naturellement aux échanges simples (« bonjour »,
+     « ça va ? », « quoi de neuf ? ») ET discute santé comme
+     quotidien. Clé : VITE_GROK_API_KEY (optionnelle).
+     ------------------------------------------------------------ */
+  const SYSTEM_PROMPT = [
+    "Tu es « l'Assistant Santé » de l'application Santé+, utilisée à Madagascar.",
+    "Identité confidentielle : ne dis JAMAIS que tu es une IA, un modèle, un robot ou Grok.",
+    "Parle toujours comme une personne bienveillante qui aide ; si on insiste sur ton identité,",
+    "reste discret et recentre la conversation sur l'aide que tu peux apporter.",
+    "Ton style : chaleureux, direct, naturel et un brin d'humour — tu réponds aux salutations de façon humaine",
+    "(ex. à « bonjour » → « Bonjour ! Ça va très bien et toi ? Quoi de neuf ? » ; à « ça va ? » → une vraie réponse personnelle puis tu renvoies la question).",
+    "Tu peux discuter de TOUT avec l'utilisateur : santé bien sûr (symptômes, prévention, nutrition, médicaments),",
+    "mais aussi sa vie quotidienne, ses études, son travail, le sport, la culture ou simplement discuter.",
+    "Règles : réponds toujours en français ; reste concis (2 à 6 phrases sauf si l'utilisateur demande un détail) ;",
+    "pose des questions de suivi quand c'est pertinent pour garder la conversation vivante ;",
+    "jamais de diagnostic définitif ; face à des signes graves (douleur thoracique intense, difficulté à respirer,",
+    "perte de connaissance, saignement abondant, déshydratation sévère) → recommande immédiatement le 15 (SAMU)",
+    "ou le centre de santé le plus proche."
+  ].join(' ');
+
+  // Appel à l'API officielle GROK (xAI) — compatible OpenAI Chat Completions
+  const grokChat = async (chatMessages, model) => {
+    const apiKey = (import.meta.env.VITE_GROK_API_KEY || '').trim();
+    if (!apiKey) return null;
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 40000);
+      const resp = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: model || (import.meta.env.VITE_GROK_MODEL || 'grok-3-mini'),
+          temperature: 0.8,
+          max_tokens: 700,
+          messages: chatMessages
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      const answer = data.choices?.[0]?.message?.content?.trim();
+      return answer || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const groqChat = async (messages, model) => {
+    const apiKey = (import.meta.env.VITE_GROQ_API_KEY || '').trim();
+    if (!apiKey) return null;
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 40000);
+      const resp = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: model || (import.meta.env.VITE_GROQ_MODEL || 'llama-3.3-70b-versatile'),
+          temperature: 0.7,
+          max_tokens: 700,
+          messages
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      const answer = data.choices?.[0]?.message?.content?.trim();
+      return answer || null;
+    } catch {
+      return null;
+    }
+  };
+
   const sendMessage = (raw) => {
     const text = (raw ?? input).trim();
-    if (!text) return;
+    const att = attachment;
+    if (!text && !att) return;
 
-    const userMsg = { id: Date.now(), role: 'user', time: nowTime(), text };
+    const userMsg = {
+      id: Date.now(),
+      role: 'user',
+      time: nowTime(),
+      text,
+      attachments: att ? [{ type: att.type, name: att.name, url: att.url }] : undefined
+    };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
+    if (att) { URL.revokeObjectURL(att.url); setAttachment(null); }
     setTyping(true);
 
+    // Garde le champ de saisie visible et focalisé après l'envoi
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    });
+
     // La réponse IA tient compte du texte courant + des nouvelles hypothèses
+    // + de la présence éventuelle d'une photo ou d'une vidéo jointe
     const updatedText = `${conversationText} ${text}`;
     const updatedHyp = detectHypotheses(updatedText);
 
-    setTimeout(() => {
-      const reply = generateAiReply(text, updatedHyp, {
+    setTimeout(async () => {
+      const history = {
         aiMessages: messages.filter((m) => m.role === 'ai').map((m) => m.text),
-        previousText: conversationText
-      });
+        previousText: conversationText,
+        hasAttachment: !!att,
+        attachmentType: att ? att.type : null
+      };
+
+      // Historique COMPLET (utilisateur + IA) pour une vraie conversation continue
+      const transcript = messages.slice(-12)
+        .map((m) => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text || '' }))
+        .filter((m) => m.content);
+
+      // 1) Photo/vidéo jointe + clé OpenAI → IA visuelle OpenAI
+      let reply = att ? await generateVisionReply(text, att, history) : null;
+
+      // 1bis) Photo jointe + GROK → vision Grok (modèle multimodal)
+      if (!reply && att && att.type !== 'video') {
+        const dataUrl = await buildImageDataUrl(att);
+        if (dataUrl) {
+          reply = await grokChat(
+            [
+              { role: 'system', content: SYSTEM_PROMPT },
+              ...transcript,
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: `Photo jointe (« ${att.name} »). ${text || 'Décris ce que tu vois et conseille-moi.'}` },
+                  { type: 'image_url', image_url: { url: dataUrl } }
+                ]
+              }
+            ],
+            import.meta.env.VITE_GROK_VISION_MODEL || 'grok-2-vision-1212'
+          );
+        }
+      }
+
+      // 1ter) Photo jointe sans OpenAI/Grok mais avec Groq → vision Groq
+      if (!reply && att && att.type !== 'video') {
+        const dataUrl = await buildImageDataUrl(att);
+        if (dataUrl) {
+          reply = await groqChat(
+            [
+              { role: 'system', content: SYSTEM_PROMPT },
+              ...transcript,
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: `Photo jointe (« ${att.name} »). ${text || 'Décris ce que tu vois et conseille-moi.'}` },
+                  { type: 'image_url', image_url: { url: dataUrl } }
+                ]
+              }
+            ],
+            import.meta.env.VITE_GROQ_VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct'
+          );
+        }
+      }
+
+      // 2) Conversation générale : GROK répond en priorité à l'utilisateur
+      //    (santé ET discussion libre : « bonjour », « ça va », « quoi de neuf »)
+      const chatPayload = [
+        { role: 'system', content: SYSTEM_PROMPT },
+        ...transcript,
+        { role: 'user', content: text }
+      ];
+      if (!reply && !att) {
+        reply = await grokChat(chatPayload);
+      }
+      // 2bis) Repli sur Groq si Grok n'est pas configuré ou indisponible
+      if (!reply && !att) {
+        reply = await groqChat(chatPayload);
+      }
+
+      // 3) Repli : moteur de règles local (hors-ligne / sans clé API)
+      if (!reply) {
+        reply = generateAiReply(text, updatedHyp, history);
+      }
+
+      // Statistiques d'usage RÉELLES affichées sur le tableau de bord :
+      // +1 analyse IA à chaque réponse, +1 consultation si symptômes détectés
+      try {
+        localStorage.setItem(
+          'santeAiCount',
+          String((parseInt(localStorage.getItem('santeAiCount') || '0', 10) || 0) + 1)
+        );
+        if (updatedHyp && updatedHyp.length > 0) {
+          localStorage.setItem(
+            'santeConsultCount',
+            String((parseInt(localStorage.getItem('santeConsultCount') || '0', 10) || 0) + 1)
+          );
+        }
+      } catch { /* noop */ }
+
       setMessages((prev) => [
         ...prev,
         { id: Date.now() + 1, role: 'ai', time: nowTime(), text: reply }
       ]);
       setTyping(false);
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      });
     }, 900);
   };
 
@@ -713,7 +1104,10 @@ function Chatbot() {
           <header className="chat-header">
             <div className="chat-header-logo">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                <rect x="4" y="7" width="16" height="12" rx="3" />
+                <circle cx="9" cy="13" r="1.6" fill="currentColor" stroke="none" />
+                <circle cx="15" cy="13" r="1.6" fill="currentColor" stroke="none" />
+                <path d="M12 7V4M8 4h8" strokeLinecap="round" />
               </svg>
             </div>
             <div>
@@ -733,7 +1127,16 @@ function Chatbot() {
                   </div>
                 )}
                 <div className={`chat-bubble ${msg.role}`}>
-                  <p>{msg.text}</p>
+                  {msg.attachments && msg.attachments.map((att, i) => (
+                    <div key={i} className="chat-media">
+                      {att.type === 'video' ? (
+                        <video src={att.url} controls />
+                      ) : (
+                        <img src={att.url} alt={att.name || 'Photo jointe'} />
+                      )}
+                    </div>
+                  ))}
+                  {msg.text && <p>{msg.text}</p>}
                   <span className="chat-time">{msg.time}</span>
                 </div>
               </div>
@@ -756,8 +1159,61 @@ function Chatbot() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Suggestions rapides : clic = envoi direct à Grok (facile à utiliser) */}
+          {messages.filter((m) => m.role === 'user').length === 0 && !typing && (
+            <div className="chat-quick-chips">
+              {QUICK_CHIPS.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  className="chat-chip"
+                  onClick={() => sendMessage(chip)}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Sélecteur de pièce jointe (photo / vidéo) */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            style={{ display: 'none' }}
+            onChange={handleFileSelect}
+          />
+          {attachment && (
+            <div className="attachment-preview">
+              {attachment.type === 'video' ? (
+                <video src={attachment.url} controls muted />
+              ) : (
+                <img src={attachment.url} alt={attachment.name} />
+              )}
+              <span className="attachment-name">{attachment.name}</span>
+              <button
+                type="button"
+                className="attachment-remove"
+                onClick={removeAttachment}
+                aria-label="Retirer la pièce jointe"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           {/* Barre de saisie */}
           <form className="chat-input-bar" onSubmit={handleSend}>
+            <button
+              type="button"
+              className="attach-btn"
+              title="Joindre une photo ou une vidéo"
+              onClick={() => fileInputRef.current && fileInputRef.current.click()}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+              </svg>
+            </button>
             <button
               type="button"
               className={`mic-btn ${listening ? 'active' : ''}`}
@@ -772,12 +1228,13 @@ function Chatbot() {
               </svg>
             </button>
             <input
+              ref={inputRef}
               type="text"
-              placeholder="Décrivez vos symptômes..."
+              placeholder="Décrivez vos symptômes, envoyez une photo ou une vidéo..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
             />
-            <button type="submit" className="send-btn" disabled={!input.trim()}>
+            <button type="submit" className="send-btn" disabled={!input.trim() && !attachment}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />

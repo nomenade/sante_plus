@@ -6,8 +6,14 @@ import './EmergencyLocator.css';
    et TOUTES les structures de santé à proximité (API Overpass)
    ============================================================ */
 
-const DEFAULT_CENTER = { lat: 6.3703, lon: 2.3912 }; // Cotonou par défaut
-const DEFAULT_LABEL = 'Cotonou — position par défaut';
+const DEFAULT_CENTER = { lat: -18.8792, lon: 47.5079 }; // Antananarivo (Madagascar) par défaut
+const DEFAULT_LABEL = 'Antananarivo — position par défaut';
+
+// Quartiers / lieux précis fréquents à Madagascar (boutons rapides façon Google Maps)
+const POPULAR_PLACES = [
+  'Andavamamba', 'Analakely', 'Isotry', 'Ambohijatovo', 'Ivandry',
+  'Ankorondrano', 'Mahamasina', 'Anosy', 'Ambanidia', 'Tsaralalana'
+];
 
 const TYPE_META = {
   hospital: { label: 'Hôpital',   color: '#dc2626', icon: '🏥' },
@@ -154,11 +160,16 @@ async function overpassQuery(lat, lon, km) {
   throw lastErr;
 }
 
+// Libellé de position GPS avec précision (façon Google Maps)
+const gpsLabel = (acc) =>
+  'Votre position GPS' + (acc ? ` — précision ±${Math.round(acc)} m` : '');
+
 function EmergencyLocator() {
   const mapElRef = useRef(null);
   const mapRef = useRef(null);
   const layerRef = useRef(null);
   const routeLayerRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const [center, setCenter] = useState(DEFAULT_CENTER);
   const [centerLabel, setCenterLabel] = useState(DEFAULT_LABEL);
@@ -167,6 +178,10 @@ function EmergencyLocator() {
   const [locating, setLocating] = useState(false);
   const [search, setSearch] = useState('');
   const [searching, setSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [addressNotice, setAddressNotice] = useState('');
+  const suggestionsRef = useRef(null);
   const [radius, setRadius] = useState(10);
   const [filter, setFilter] = useState('tous');
   const [selectedId, setSelectedId] = useState(null);
@@ -175,6 +190,8 @@ function EmergencyLocator() {
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState('');
   const [fullscreen, setFullscreen] = useState(false);
+  // Précision GPS renvoyée par le navigateur (rayon du cercle bleu)
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
 
   // Initialisation de la carte Leaflet (une seule fois)
   useEffect(() => {
@@ -194,7 +211,7 @@ function EmergencyLocator() {
     return () => { map.remove(); mapRef.current = null; layerRef.current = null; routeLayerRef.current = null; };
   }, []);
 
-  const loadPlaces = useCallback(async (c, km) => {
+  const loadPlaces = useCallback(async (c, km, autoGuide = false) => {
     setLoading(true);
     setError('');
     try {
@@ -204,6 +221,12 @@ function EmergencyLocator() {
         .filter((p) => p.lat != null && p.lon != null && p.name && p.distance <= km)
         .sort((a, b) => a.distance - b.distance);
       setPlaces(list);
+      // Guide automatique : dès que le centre est défini, on trace le trajet
+      // vers l'établissement le plus proche (façon Google Maps)
+      if (autoGuide && list.length > 0) {
+        setSelectedId(list[0].id);
+        setTimeout(() => { traceRoute(list[0], c); }, 350);
+      }
     } catch {
       setError('Connexion impossible au service de cartographie. Réessayez dans un instant.');
       setPlaces([]);
@@ -212,20 +235,22 @@ function EmergencyLocator() {
     }
   }, []);
 
-  // Géolocalisation au premier chargement
+  // Géolocalisation au premier chargement (haute précision)
   useEffect(() => {
     if (!navigator.geolocation) { loadPlaces(DEFAULT_CENTER, 10); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const p = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        const acc = pos.coords.accuracy || null;
+        setGpsAccuracy(acc);
         setCenter(p);
-        setCenterLabel('Votre position actuelle');
+        setCenterLabel(gpsLabel(acc));
         setLocating(false);
         loadPlaces(p, 10);
       },
       () => { setLocating(false); loadPlaces(DEFAULT_CENTER, 10); },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 120000 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -257,6 +282,17 @@ function EmergencyLocator() {
     const userCircle = L.circleMarker([center.lat, center.lon], {
       radius: 9, color: '#2563eb', weight: 3, fillColor: '#2563eb', fillOpacity: 0.85
     }).addTo(layerRef.current);
+
+    // Cercle de PRÉCISION GPS façon Google Maps : montre la zone fiable
+    // autour du point bleu quand on est localisé par satellite
+    if (gpsAccuracy != null) {
+      L.circle([center.lat, center.lon], {
+        radius: gpsAccuracy,
+        color: '#3b82f6', weight: 1,
+        fillColor: '#3b82f6', fillOpacity: 0.12,
+        interactive: false
+      }).addTo(layerRef.current);
+    }
 
     const types = FILTERS[filter] || FILTERS.tous;
     places.filter((p) => types.includes(p.type)).forEach((p) => {
@@ -293,44 +329,125 @@ function EmergencyLocator() {
     });
     return () => { userCircle.remove(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [places, filter, center, radius]);
+  }, [places, filter, center, radius, gpsAccuracy]);
 
   const filteredPlaces = places.filter((p) => (FILTERS[filter] || FILTERS.tous).includes(p.type));
 
+  // « Les plus proches » : le plus proche hôpital/clinique, médecin et pharmacie (avec km)
+  const nearestByCategory = (() => {
+    const pickNearest = (types) => {
+      const list = places
+        .filter((p) => types.includes(p.type) && p.distance != null)
+        .sort((a, b) => a.distance - b.distance);
+      return list[0] || null;
+    };
+    return {
+      hospital: pickNearest(['hospital', 'clinic']),
+      medecin: pickNearest(['doctors', 'clinic']),
+      pharmacie: pickNearest(['pharmacy'])
+    };
+  })();
+  const nearestList = [
+    { key: 'hospital', label: 'Hôpital / clinique', icon: '🏥', place: nearestByCategory.hospital },
+    { key: 'medecin', label: 'Médecin', icon: '👨‍⚕️', place: nearestByCategory.medecin },
+    { key: 'pharmacie', label: 'Pharmacie', icon: '💊', place: nearestByCategory.pharmacie }
+  ];
+
   const locateMe = () => {
-    if (!navigator.geolocation) return;
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const p = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-        setCenter(p);
-        setCenterLabel('Votre position actuelle');
-        setLocating(false);
-        loadPlaces(p, radius);
-      },
-      () => setLocating(false),
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
+    // Au clic « Me localiser » : on donne la priorité à la saisie du lieu exact
+    // (façon Google Maps). On focalise le champ de recherche et on ouvre les suggestions
+    // de lieux précis (Andavamamba, Analakely, …). Le GPS reste disponible en secours.
+    setSearch('');
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setAddressNotice('📍 Tapez votre lieu exact (ex. Andavamamba, Analakely, Antananarivo…), choisissez une suggestion, ou utilisez un raccourci ci-dessous.');
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+      requestAnimationFrame(() => searchInputRef.current && searchInputRef.current.focus());
+    }
+    // Le GPS reste disponible : si dispo, on le lance en parallèle.
+    if (navigator.geolocation) {
+      setLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const p = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+          const acc = pos.coords.accuracy || null;
+          setGpsAccuracy(acc);
+          setCenter(p);
+          setCenterLabel(gpsLabel(acc));
+          setLocating(false);
+          loadPlaces(p, radius, true);
+        },
+        () => { setLocating(false); },
+        { enableHighAccuracy: true, timeout: 12000 }
+      );
+    }
   };
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    const q = search.trim();
-    if (!q || searching) return;
+  // Autosuggestion d'adresse (façon Google Maps) via Nominatim
+  // Restreinte à Madagascar pour ne proposer que des lieux pertinents
+  const fetchSuggestions = async (q) => {
+    if (!q || q.trim().length < 3) { setSuggestions([]); setShowSuggestions(false); return; }
+    try {
+      const res = await fetch(
+        'https://nominatim.openstreetmap.org/search?format=json&limit=6&addressdetails=1&countrycodes=mg&q=' + encodeURIComponent(q),
+        { headers: { 'Accept-Language': 'fr' } }
+      );
+      const data = await res.json();
+      setSuggestions((data || []).map((s) => ({
+        lat: parseFloat(s.lat), lon: parseFloat(s.lon), label: s.display_name || ''
+      })));
+      setShowSuggestions(true);
+    } catch {
+      setSuggestions([]);
+    }
+  };
+  const suggestionTimer = useRef(null);
+  const onSearchChange = (e) => {
+    setSearch(e.target.value);
+    if (suggestionTimer.current) clearTimeout(suggestionTimer.current);
+    suggestionTimer.current = setTimeout(() => fetchSuggestions(e.target.value), 350);
+  };
+  const pickSuggestion = (s) => {
+    setSearch(s.label.split(',').slice(0, 2).join(','));
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setAddressNotice('');
+    const p = { lat: s.lat, lon: s.lon };
+    setCenter(p);
+    setCenterLabel(s.label.split(',').slice(0, 3).join(','));
+    loadPlaces(p, radius, true);
+    if (suggestionsRef.current) suggestionsRef.current.blur();
+  };
+  // Fermer les suggestions en cliquant ailleurs
+  useEffect(() => {
+    const onDoc = (ev) => { if (suggestionsRef.current && !suggestionsRef.current.contains(ev.target)) setShowSuggestions(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+
+  // Géocode une requête texte (façon Google Maps) : recentre la carte sur le lieu trouvé.
+  // Restreint à Madagascar (countrycodes=mg) pour une précision maximale.
+  const geocodeQuery = async (q) => {
+    const query = (q || '').trim();
+    if (!query) return;
     setSearching(true);
     setError('');
     try {
       const res = await fetch(
-        'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q),
+        'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=mg&q=' + encodeURIComponent(query),
         { headers: { 'Accept-Language': 'fr' } }
       );
       const data = await res.json();
-      if (!data || data.length === 0) { setError('Aucun lieu trouvé pour cette recherche.'); return; }
+      if (!data || data.length === 0) { setError('Aucun lieu trouvé pour « ' + query + ' ». Essayez une autre orthographe.'); return; }
       const p = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-      const label = data[0].display_name ? data[0].display_name.split(',')[0] : q;
+      const label = data[0].display_name ? data[0].display_name.split(',')[0] : query;
+      setGpsAccuracy(null); // ce n'est plus la position GPS qui est affichée
       setCenter(p);
       setCenterLabel(label);
-      loadPlaces(p, radius);
+      setSuggestions([]);
+      setShowSuggestions(false);
+      loadPlaces(p, radius, true);
     } catch {
       setError('Recherche impossible (vérifiez votre connexion).');
     } finally {
@@ -338,18 +455,25 @@ function EmergencyLocator() {
     }
   };
 
+  // Recherche validée ~ Entrée, téléphone, indicateur...
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    await geocodeQuery(search);
+  };
+
   const applyRadius = (km) => { setRadius(km); loadPlaces(center, km); };
   const goTo = (p) => { setSelectedId(p.id); if (mapRef.current) mapRef.current.setView([p.lat, p.lon], 15); };
 
   // Trace l'itinéraire façon Google Maps : ligne précise + étapes détaillées
-  function traceRoute(place) {
+  function traceRoute(place, origin) {
     const L = window.L;
+    const from = origin || center;
     if (!mapRef.current || !routeLayerRef.current || !L) return;
     setRouteLoading(true);
     setRouteError('');
     routeLayerRef.current.clearLayers();
     const url =
-      `https://router.project-osrm.org/route/v1/driving/${center.lon},${center.lat};${place.lon},${place.lat}` +
+      `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${place.lon},${place.lat}` +
       '?overview=full&geometries=geojson&steps=true&alternatives=false';
     fetch(url)
       .then((res) => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
@@ -373,7 +497,7 @@ function EmergencyLocator() {
         }).addTo(routeLayerRef.current);
 
         // Point de départ : rond bleu « vous êtes ici »
-        L.circleMarker([center.lat, center.lon], {
+        L.circleMarker([from.lat, from.lon], {
           radius: 10, color: '#ffffff', weight: 3.5, fillColor: '#4285F4', fillOpacity: 1
         }).addTo(routeLayerRef.current);
 
@@ -395,7 +519,7 @@ function EmergencyLocator() {
           distanceKm: (r.distance || 0) / 1000,
           durationMin: (r.duration || 0) / 60,
           steps,
-          googleUrl: `https://www.google.com/maps/dir/?api=1&origin=${center.lat},${center.lon}&destination=${place.lat},${place.lon}`
+          googleUrl: `https://www.google.com/maps/dir/?api=1&origin=${from.lat},${from.lon}&destination=${place.lat},${place.lon}`
         });
       })
       .catch(() => {
@@ -441,36 +565,90 @@ function EmergencyLocator() {
 
       <header className="loc-header">
         <h2>📍 Localisateur de soins</h2>
-        <p>Saisissez votre adresse ou activez votre position : la carte se centre dessus (cercle = rayon de recherche) et affiche tous les hôpitaux, cliniques, médecins et pharmacies à proximité (OpenStreetMap). Cliquez sur « Itinéraire » pour tracer un trajet précis façon Google Maps avec des consignes étape par étape.</p>
+        <p>Tapez votre <strong>lieu exact</strong> (ex. Andavamamba, Analakely, Antananarivo…) ou cliquez sur <strong>Me localiser</strong> : la carte se centre dessus façon Google Maps, puis vous obtenez l'hôpital, le médecin et la pharmacie <strong>les plus proches avec la distance en km</strong> et un itinéraire précis étape par étape.</p>
       </header>
+
+      {/* Aide pas-à-pas : la fonctionnalité est comprise en 3 secondes */}
+      <div className="loc-help">
+        <span className="loc-help-step"><b>1.</b> 📍 Tapez votre quartier ou appuyez sur <b>Me localiser</b></span>
+        <span className="loc-help-step"><b>2.</b> 🎛️ Filtrez : Pharmacies · Médecins · Hôpitaux</span>
+        <span className="loc-help-step"><b>3.</b> 🛣️ Touchez <b>Itinéraire</b> : le trajet s'affiche étape par étape</span>
+      </div>
 
       {/* Recherche + localisation */}
       <div className="loc-search">
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, flex: 1, minWidth: 0 }}>
-          <input
-            type="text"
-            className="loc-input"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Votre adresse (rue, ville, pays) — ex. Cotonou, Avenue Clozel"
-          />
+        <form onSubmit={handleSearch} className="loc-search-wrap" style={{ flex: 1, minWidth: 0 }}>
+          <div className="loc-field-group" ref={suggestionsRef}>
+            <div className="loc-field">
+              <svg className="loc-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+                <input
+                  type="text"
+                  className="loc-input"
+                  ref={searchInputRef}
+                  value={search}
+                  onChange={onSearchChange}
+                  onFocus={() => setShowSuggestions(suggestions.length > 0)}
+                  placeholder="📍 Tapez votre lieu exact (ex. Andavamamba, Analakely…) — ou votre adresse complète"
+                  autoComplete="off"
+                />
+              {search && (
+                <button type="button" className="loc-clear" onClick={() => { setSearch(''); setSuggestions([]); }} aria-label="Effacer">
+                  ×
+                </button>
+              )}
+            </div>
+            {showSuggestions && suggestions.length > 0 && (
+              <ul className="loc-suggestions">
+                {suggestions.map((s, i) => (
+                  <li key={i} onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s); }}>
+                    <span className="loc-sug-pin">📍</span>
+                    <span className="loc-sug-label">{s.label}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <button type="submit" className="loc-filter active" disabled={searching} style={{ border: 'none', cursor: 'pointer' }}>
             {searching ? '…' : 'Chercher'}
           </button>
         </form>
-        <button type="button" className="loc-filter" onClick={locateMe} style={{ cursor: 'pointer' }}>
+        <button type="button" className="loc-filter loc-filter-locate" onClick={locateMe} style={{ cursor: 'pointer' }}>
           {locating ? 'Localisation…' : '🛰️ Me localiser'}
         </button>
+      </div>
+      {addressNotice && <div className="loc-notice">{addressNotice}</div>}
+
+      {/* Raccourcis de lieux précis (façon Google Maps) */}
+      <div className="loc-quick">
+        <span className="loc-quick-label">Lieux précis populaires :</span>
+        {POPULAR_PLACES.map((name) => (
+          <button
+            key={name}
+            type="button"
+            className="loc-quick-chip"
+            onClick={() => { setSearch(name); geocodeQuery(name); }}
+          >
+            📍 {name}
+          </button>
+        ))}
       </div>
 
       {/* Filtres + rayon */}
       <div className="loc-search loc-filters-row">
         <span className="loc-filters">
-          {[['tous', 'Tous'], ['hospital', '🏥 Hôpitaux'], ['medecin', '👨‍⚕️ Médecins'], ['pharmacie', '💊 Pharmacies']].map(([key, label]) => (
-            <button key={key} type="button" className={`loc-filter ${filter === key ? 'active' : ''}`} onClick={() => setFilter(key)}>
-              {label}
-            </button>
-          ))}
+          {[['tous', 'Tous'], ['hospital', '🏥 Hôpitaux'], ['medecin', '👨‍⚕️ Médecins'], ['pharmacie', '💊 Pharmacies']].map(([key, label]) => {
+            const count = key === 'tous'
+              ? places.length
+              : places.filter((p) => (FILTERS[key] || []).includes(p.type)).length;
+            return (
+              <button key={key} type="button" className={`loc-filter ${filter === key ? 'active' : ''}`} onClick={() => setFilter(key)}>
+                {label} <span className="loc-count">{count}</span>
+              </button>
+            );
+          })}
         </span>
         <span className="loc-filters">
           <span className="loc-radius-label">Rayon :</span>
@@ -491,8 +669,39 @@ function EmergencyLocator() {
           {!loading && !error && filteredPlaces.length === 0 && (
             <div className="loc-empty">Aucun établissement trouvé. Élargissez le rayon ou changez de lieu.</div>
           )}
+
+          {/* Les plus proches (hôpital / médecin / pharmacie) avec calcul du km */}
+          {!loading && !error && places.length > 0 && (
+            <div className="loc-near-panel">
+              <div className="loc-near-title">⚡ Les plus proches de vous</div>
+              {nearestList.map((n) => (
+                <div key={n.key} className="loc-near-row">
+                  <span className="loc-near-icon">{n.icon}</span>
+                  <div className="loc-near-main">
+                    <span className="loc-near-label">{n.label}</span>
+                    <span className="loc-near-name">{n.place ? n.place.name : 'Aucun à proximité'}</span>
+                  </div>
+                  {n.place && (
+                    <div className="loc-near-right">
+                      <span className="loc-near-dist">
+                        {n.place.distance < 1 ? `${Math.round(n.place.distance * 1000)} m` : `${n.place.distance.toFixed(1)} km`}
+                      </span>
+                      <button
+                        type="button"
+                        className="loc-near-trace"
+                        onClick={(e) => { e.stopPropagation(); openItinerary(n.place); }}
+                        title="Tracer l'itinéraire"
+                      >
+                        Itinéraire
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           <ul className="loc-result-list">
-            {filteredPlaces.map((p) => {
+            {filteredPlaces.map((p, i) => {
               const meta = TYPE_META[p.type];
               return (
                 <li key={p.id} className={`loc-result ${selectedId === p.id ? 'active' : ''}`} onClick={() => goTo(p)} role="button" tabIndex="0">
@@ -500,6 +709,7 @@ function EmergencyLocator() {
                   <div className="loc-result-main">
                     <div className="loc-result-top">
                       <strong>{p.name}</strong>
+                      {i === 0 && <span className="loc-nearest">Le plus proche</span>}
                     </div>
                     <span className="loc-type">{meta.label}</span>
                     {p.address && <span className="loc-address">{p.address}</span>}

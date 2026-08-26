@@ -1,25 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './Auth.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5001/api';
 
 function Auth({ onLogin }) {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
-
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Intercepte la réussite de création de compte
+  useEffect(() => {
+    const handleSuccess = (e) => {
+      setSuccessMessage(e.detail?.message || 'Compte cree avec succes ! Connectez-vous.');
+    };
+    window.addEventListener('auth-register-success', handleSuccess);
+    return () => window.removeEventListener('auth-register-success', handleSuccess);
+  }, []);
 
   const validatePassword = (pwd) => {
     const errors = [];
-    if (pwd.length < 8) errors.push('au moins 8 caractères');
+    if (!pwd || pwd.length < 8) errors.push('au moins 8 caracteres');
     if (!/[A-Z]/.test(pwd)) errors.push('une majuscule');
     if (!/[0-9]/.test(pwd)) errors.push('un chiffre');
-    if (!/[!@#$%^&*()_+=\[\]{}|;:,.<>?]/.test(pwd)) errors.push('un caractère spécial (!@#$%^&*...)');
+    if (!/[!@#$%^&*()_+=\[\]{}|;:,.<>?]/.test(pwd)) errors.push('un caractere special');
     return errors;
   };
 
@@ -29,11 +37,10 @@ function Auth({ onLogin }) {
     setSuccessMessage('');
     setLoading(true);
 
-    // Validation côté frontend (pour inscription)
     if (!isLogin) {
-      const passwordErrors = validatePassword(password);
-      if (passwordErrors.length > 0) {
-        setError(`❌ Le mot de passe doit contenir : ${passwordErrors.join(', ')}`);
+      const pwdErrors = validatePassword(password);
+      if (pwdErrors.length > 0) {
+        setError('Erreur: ' + pwdErrors.join(', '));
         setLoading(false);
         return;
       }
@@ -42,16 +49,24 @@ function Auth({ onLogin }) {
     try {
       if (isLogin) {
         const res = await axios.post(`${API_URL}/login`, { email, password });
-        setSuccessMessage('✅ Connexion réussie ! Redirection...');
+        setSuccessMessage('Connexion reussie !');
         setTimeout(() => onLogin(res.data.token, res.data.role, email), 800);
       } else {
-        const res = await axios.post(`${API_URL}/register`, { email, password });
-        setSuccessMessage('✅ ' + (res.data.message || 'Compte créé avec succès !'));
-        setError('');
-        setIsLogin(true);
+        await axios.post(`${API_URL}/register`, { email, password });
+        setSuccessMessage('Compte cree avec succes !');
+        setEmail('');
+        setPassword('');
+        setShowPassword(false);
+        setTimeout(() => {
+          setIsLogin(true);
+          setSuccessMessage('');
+          window.dispatchEvent(new CustomEvent('auth-register-success', {
+            detail: { message: 'Compte cree ! Connectez-vous.' }
+          }));
+        }, 1500);
       }
     } catch (err) {
-      const msg = err.response?.data?.error || '❌ Une erreur est survenue. Veuillez réessayer.';
+      const msg = err.response?.data?.error || 'Erreur reseau.';
       setError(msg);
       setSuccessMessage('');
     } finally {
@@ -68,25 +83,9 @@ function Auth({ onLogin }) {
               <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
             </svg>
           </div>
-          <h1>Santé<strong>+</strong></h1>
-          <p>Votre assistant santé intelligent</p>
+          <h1>Sante<strong>+</strong></h1>
+          <p>{isLogin ? "Deja membre ? Connectez-vous. Sinon, creez un compte." : "Creez votre compte en toute securite."}</p>
         </div>
-
-        <div className="auth-tabs">
-          <button
-            className={`auth-tab ${isLogin ? 'active' : ''}`}
-            onClick={() => { setIsLogin(true); setError(''); }}
-          >
-            Connexion
-          </button>
-          <button
-            className={`auth-tab ${!isLogin ? 'active' : ''}`}
-            onClick={() => { setIsLogin(false); setError(''); }}
-          >
-            Inscription
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
             <label>Email</label>
@@ -105,6 +104,17 @@ function Auth({ onLogin }) {
             </div>
           </div>
 
+          {successMessage && (
+            <div className="auth-message success">
+              {successMessage}
+            </div>
+          )}
+          {error && (
+            <div className="auth-message error">
+              {error}
+            </div>
+          )}
+
           <div className="form-group">
             <label>Mot de passe</label>
             <div className="input-wrapper">
@@ -113,19 +123,20 @@ function Auth({ onLogin }) {
                 <path d="M7 11V7a5 5 0 0110 0v4" />
               </svg>
               <input
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
+                autoComplete={isLogin ? 'current-password' : 'new-password'}
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
-                aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
               >
                 {showPassword ? (
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -143,29 +154,25 @@ function Auth({ onLogin }) {
             </div>
           </div>
 
-          {successMessage && (
-            <div className="auth-message success">
-              {successMessage}
-            </div>
-          )}
-
-          {error && (
-            <div className="auth-message error">
-              {error}
-            </div>
-          )}
-
           <button type="submit" className="auth-submit" disabled={loading}>
             {loading ? (
               <span className="loading-spinner"></span>
             ) : (
-              isLogin ? 'Se connecter' : 'Créer mon compte'
+              isLogin ? 'Se connecter' : 'Creer mon compte'
             )}
+          </button>
+
+          <button
+            type="button"
+            className="auth-switch-btn"
+            onClick={() => { setIsLogin(!isLogin); setError(''); setSuccessMessage(''); }}
+          >
+            {isLogin ? "Vous n'avez pas de compte ? Creer un compte" : 'Deja inscrit ? Me connecter'}
           </button>
         </form>
 
         <div className="auth-footer">
-          <p>La santé est le plus grand des biens</p>
+          <p>La sante est le plus grand des biens</p>
           <svg className="heartbeat" viewBox="0 0 100 20" fill="none" stroke="#059669" strokeWidth="1.5">
             <polyline points="0,10 10,10 15,3 25,17 35,3 45,17 55,10 100,10" />
           </svg>

@@ -98,6 +98,320 @@
   box-shadow: 0 4px 10px rgba(5, 150, 105, 0.3);
 }
 
+/* ---------- Compteur de résultats par filtre ---------- */
+.loc-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: rgba(5, 150, 105, 0.12);
+  color: #047857;
+  font-size: 11px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+.loc-filter.active .loc-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* ---------- Aide pas-à-pas (facile à comprendre) ---------- */
+.loc-help {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(16, 185, 129, 0.08));
+  border: 1px dashed rgba(37, 99, 235, 0.35);
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 14px;
+}
+.loc-help-step {
+  font-size: 13px;
+  color: #1e40af;
+  line-height: 1.45;
+}
+.loc-help-step b {
+  color: #2563eb;
+}
+@media (max-width: 700px) {
+  .loc-help {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+/* Bouton « Me localiser » — façon Google Maps : pilule bleue,
+   texte/icône TOUJOURS blancs (y compris au survol), ombre douce */
+.loc-filter-locate {
+  background: linear-gradient(135deg, #1a73e8, #4285f4);
+  color: #ffffff;
+  border-color: transparent;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.35);
+}
+.loc-filter-locate:hover {
+  background: linear-gradient(135deg, #1765cc, #1a73e8);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.45);
+  transform: translateY(-1px);
+}
+.loc-filter-locate:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 5px rgba(26, 115, 232, 0.4);
+}
+.loc-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+/* Groupe champ + suggestions */
+.loc-field-group {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* Champ de saisie d'adresse façon Google Maps */
+.loc-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  background: var(--bg-primary, #f9fafb);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.loc-field:focus-within {
+  border-color: #10b981;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
+}
+.loc-field-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-left: 13px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+.loc-field .loc-input {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 11px 10px 11px 9px;
+}
+.loc-field .loc-input:hover,
+.loc-field .loc-input:focus {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+.loc-clear {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px 10px;
+  flex-shrink: 0;
+}
+.loc-clear:hover {
+  color: #059669;
+}
+/* Suggestions d'adresse */
+.loc-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 1200;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.loc-suggestions li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary, #1a1a2e);
+}
+.loc-suggestions li:hover {
+  background: #f0fdf4;
+}
+.loc-sug-pin {
+  flex-shrink: 0;
+  font-size: 15px;
+}
+.loc-sug-label {
+  line-height: 1.3;
+}
+/* Message d'invitation à saisir l'adresse */
+.loc-notice {
+  margin: -8px 0 16px;
+  padding: 10px 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #f59e0b;
+  border-radius: 10px;
+  color: #92400e;
+  font-size: 13px;
+}
+/* ---------- Lieux rapides (chips) ---------- */
+.loc-quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: -6px 0 14px;
+}
+.loc-quick-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-muted, #6b7280);
+  white-space: nowrap;
+}
+.loc-quick-chip {
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-primary, #f0fdf4);
+  color: var(--text-secondary, #4b5563);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.loc-quick-chip:hover {
+  border-color: #10b981;
+  color: #059669;
+}
+
+/* ---------- Panneau « les plus proches » ---------- */
+.loc-near-panel {
+  margin-top: 14px;
+  padding: 14px;
+  background: var(--bg-secondary, #f8fafc);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 14px;
+}
+.loc-near-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary, #1a1a2e);
+}
+.loc-near-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border-color, #eef0f2);
+}
+.loc-near-row:last-child { border-bottom: none; }
+.loc-near-icon { font-size: 18px; flex-shrink: 0; }
+.loc-near-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.loc-near-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a2e);
+}
+.loc-near-name {
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.loc-near-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.loc-near-dist {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #047857;
+  background: #d1fae5;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.loc-near-trace {
+  border: none;
+  background: var(--green-gradient, linear-gradient(135deg, #059669, #10b981));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.2s;
+}
+.loc-near-trace:hover { transform: translateY(-1px); }
+
+/* Mode sombre + responsive */
+.dashboard.dark-mode .loc-quick-chip {
+  background: #0f172a;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+.dashboard.dark-mode .loc-near-panel {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+.dashboard.dark-mode .loc-near-label { color: #f1f5f9; }
+.dashboard.dark-mode .loc-near-name { color: #94a3b8; }
+.dashboard.dark-mode .loc-near-dist { background: #065f46; color: #a7f3d0; }
+.dashboard.dark-mode .loc-near-trace { background: linear-gradient(135deg, #059669, #10b981); color: #ffffff; }
+@media (max-width: 900px) {
+  .loc-quick { flex-wrap: wrap; }
+}
+/* Badge « Le plus proche » */
+.loc-nearest {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #047857;
+  background: #dcfce7;
+  border: 1px solid #a7f3d0;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.loc-result-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ---------- Layout ---------- */
 .loc-layout {
   display: flex;
@@ -464,6 +778,48 @@
   border-color: #334155;
   color: #94a3b8;
 }
+.dashboard.dark-mode .loc-filter-locate {
+  background: linear-gradient(135deg, #1a73e8, #4285f4);
+  color: #ffffff;
+  border-color: transparent;
+}
+.dashboard.dark-mode .loc-filter-locate:hover {
+  background: linear-gradient(135deg, #1765cc, #1a73e8);
+  color: #ffffff;
+}
+.dashboard.dark-mode .loc-field {
+  background: #0f172a;
+  border-color: #334155;
+}
+.dashboard.dark-mode .loc-field:focus-within {
+  border-color: #10b981;
+  background: #0f172a;
+}
+.dashboard.dark-mode .loc-field-icon {
+  color: #64748b;
+}
+.dashboard.dark-mode .loc-field .loc-input,
+.dashboard.dark-mode .loc-field .loc-input:hover,
+.dashboard.dark-mode .loc-field .loc-input:focus {
+  background: transparent;
+  color: #f1f5f9;
+}
+.dashboard.dark-mode .loc-clear {
+  color: #64748b;
+}
+.dashboard.dark-mode .loc-clear:hover {
+  color: #4ade80;
+}
+.dashboard.dark-mode .loc-suggestions {
+  background: #1e293b;
+  border-color: #334155;
+}
+.dashboard.dark-mode .loc-suggestions li {
+  color: #e2e8f0;
+}
+.dashboard.dark-mode .loc-suggestions li:hover {
+  background: #0f172a;
+}
 .dashboard.dark-mode .loc-ctrl,
 .dashboard.dark-mode .loc-recenter {
   background: #1e293b;
@@ -514,18 +870,24 @@
 .loc-input {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 10px 14px;
-  border: 1px solid var(--border-color, #e5e7eb);
+  padding: 11px 16px;
+  border: 1.5px solid var(--border-color, #e2e8f0);
   border-radius: 999px;
   font-size: 14px;
   color: var(--text-primary, #1a1a2e);
   background: var(--bg-primary, #f9fafb);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.loc-input:hover {
+  border-color: #cbd5e1;
+  background: #ffffff;
 }
 .loc-input:focus {
   border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
 }
 
 /* Rangée filtres + rayon */

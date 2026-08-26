@@ -24,11 +24,18 @@ def create_admin_bp(get_db_connection, logger, bcrypt, database_url):
         @jwt_required()
         def wrapper(*args, **kwargs):
             user_id = get_jwt_identity()
-            conn = get_db_connection()
-            c = conn.cursor()
-            c.execute(f"SELECT role FROM users WHERE id = {ph()}", (user_id,))
-            user = c.fetchone()
-            conn.close()
+            conn = None
+            try:
+                conn = get_db_connection()
+                c = conn.cursor()
+                c.execute(f"SELECT role FROM users WHERE id = {ph()}", (user_id,))
+                user = c.fetchone()
+            finally:
+                if conn is not None:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
 
             if not user or user[0] != 'admin':
                 return jsonify({"error": "Accès refusé. Droits d'administrateur requis."}), 403
@@ -53,21 +60,36 @@ def create_admin_bp(get_db_connection, logger, bcrypt, database_url):
             return jsonify({"error": "Clé maître invalide"}), 403
 
         # Vérifier s'il y a déjà un admin
-        conn = get_db_connection()
-        c = conn.cursor()
-        c.execute(f"SELECT COUNT(*) FROM users WHERE role = {ph()}", ('admin',))
-        count = c.fetchone()[0]
+        conn = None
+        try:
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute(f"SELECT COUNT(*) FROM users WHERE role = {ph()}", ('admin',))
+            count = c.fetchone()[0]
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
         if count > 0:
-            conn.close()
             return jsonify({"error": "Un administrateur existe déjà"}), 400
 
         # Créer l'admin
         hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-        c.execute(f"INSERT INTO users (email, password, role) VALUES ({ph()}, {ph()}, {ph()})",
-                  (email, hashed_password, 'admin'))
-        conn.commit()
-        conn.close()
+        try:
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute(f"INSERT INTO users (email, password, role) VALUES ({ph()}, {ph()}, {ph()})",
+                      (email, hashed_password, 'admin'))
+            conn.commit()
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
         logger.warning(f"PREMIER ADMIN CRÉÉ: {email}")
         return jsonify({"message": "Compte administrateur créé avec succès"}), 201
@@ -77,11 +99,18 @@ def create_admin_bp(get_db_connection, logger, bcrypt, database_url):
     @require_admin
     def list_users():
         """Liste tous les utilisateurs (réservé aux admins)"""
-        conn = get_db_connection()
-        c = conn.cursor()
-        c.execute("SELECT id, email, role FROM users ORDER BY id DESC")
-        users = c.fetchall()
-        conn.close()
+        conn = None
+        try:
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute("SELECT id, email, role FROM users ORDER BY id DESC")
+            users = c.fetchall()
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
         user_list = []
         for user in users:
@@ -98,26 +127,31 @@ def create_admin_bp(get_db_connection, logger, bcrypt, database_url):
     @require_admin
     def delete_user(user_id):
         """Supprime un utilisateur (réservé aux admins)"""
-        conn = get_db_connection()
-        c = conn.cursor()
+        conn = None
+        try:
+            conn = get_db_connection()
+            c = conn.cursor()
 
-        # Vérifier que l'utilisateur existe
-        c.execute(f"SELECT id, role FROM users WHERE id = {ph()}", (user_id,))
-        user = c.fetchone()
+            # Vérifier que l'utilisateur existe
+            c.execute(f"SELECT id, role FROM users WHERE id = {ph()}", (user_id,))
+            user = c.fetchone()
 
-        if not user:
-            conn.close()
-            return jsonify({"error": "Utilisateur non trouvé"}), 404
+            if not user:
+                return jsonify({"error": "Utilisateur non trouvé"}), 404
 
-        # Ne pas permettre la suppression d'un admin
-        if user[1] == 'admin':
-            conn.close()
-            return jsonify({"error": "Impossible de supprimer un administrateur"}), 400
+            # Ne pas permettre la suppression d'un admin
+            if user[1] == 'admin':
+                return jsonify({"error": "Impossible de supprimer un administrateur"}), 400
 
-        # Supprimer l'utilisateur
-        c.execute(f"DELETE FROM users WHERE id = {ph()}", (user_id,))
-        conn.commit()
-        conn.close()
+            # Supprimer l'utilisateur
+            c.execute(f"DELETE FROM users WHERE id = {ph()}", (user_id,))
+            conn.commit()
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
         logger.warning(f"Utilisateur {user_id} supprimé par admin")
         return jsonify({"message": "Utilisateur supprimé avec succès"}), 200
@@ -127,12 +161,18 @@ def create_admin_bp(get_db_connection, logger, bcrypt, database_url):
     @require_admin
     def promote_user(user_id):
         """Promouvoir un utilisateur en administrateur"""
-        conn = get_db_connection()
-        c = conn.cursor()
-
-        c.execute(f"UPDATE users SET role = 'admin' WHERE id = {ph()}", (user_id,))
-        conn.commit()
-        conn.close()
+        conn = None
+        try:
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute(f"UPDATE users SET role = 'admin' WHERE id = {ph()}", (user_id,))
+            conn.commit()
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
         logger.warning(f"Utilisateur {user_id} promu admin")
         return jsonify({"message": "Utilisateur promu administrateur"}), 200
@@ -142,15 +182,21 @@ def create_admin_bp(get_db_connection, logger, bcrypt, database_url):
     @require_admin
     def get_stats():
         """Statistiques de l'application"""
-        conn = get_db_connection()
-        c = conn.cursor()
+        conn = None
+        try:
+            conn = get_db_connection()
+            c = conn.cursor()
 
-        c.execute("SELECT COUNT(*) FROM users")
-        total_users = c.fetchone()[0]
-        c.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
-        total_admins = c.fetchone()[0]
-
-        conn.close()
+            c.execute("SELECT COUNT(*) FROM users")
+            total_users = c.fetchone()[0]
+            c.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
+            total_admins = c.fetchone()[0]
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
         return jsonify({
             "total_users": total_users,
