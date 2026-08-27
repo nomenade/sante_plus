@@ -960,6 +960,73 @@ function Chatbot() {
     }
   };
 
+  /* ------------------------------------------------------------
+     OPENROUTER — l'IA qui répond aux utilisateurs (passerelle unique
+     vers de nombreux modèles, dont Gemini).
+     1) Voie sécurisée : proxy backend /api/ai/openrouter (la clé
+        OPENROUTER_API_KEY reste sur le serveur).
+     2) Repli : appel direct à openrouter.ai avec VITE_OPENROUTER_API_KEY.
+     MODÈLE PRINCIPAL = GRATUIT (sans crédit) : minimax/minimax-m3:free.
+     Si ce modèle est indisponible, on bascule automatiquement sur
+     d'autres modèles gratuits. Sinon → Groq/moteur local.
+     ------------------------------------------------------------ */
+  const OPENROUTER_FALLBACKS = [
+    'z-ai/glm-5.2:free',
+    'google/gemma-4-31b-it:free',
+    'nvidia/nemotron-3-super-120b-a12b:free'
+  ];
+
+  const openrouterChat = async (chatMessages, model) => {
+    const primary = model || (import.meta.env.VITE_OPENROUTER_MODEL || 'minimax/minimax-m3:free');
+    const candidates = [primary, ...OPENROUTER_FALLBACKS];
+
+    // 1) Proxy sécurisé via le backend (essaye chaque modèle candidat)
+    for (const m of candidates) {
+      try {
+        const res = await axios.post(`${API_URL}/ai/openrouter`, {
+          messages: chatMessages,
+          model: m,
+          temperature: 0.8,
+          max_tokens: 900
+        }, { timeout: 45000 });
+        const reply = res.data && res.data.reply;
+        if (reply) return reply.trim();
+      } catch { /* backend indisponible / échec → modèle suivant */ }
+    }
+
+    // 2) Repli : appel direct OpenRouter avec VITE_OPENROUTER_API_KEY
+    const apiKey = (import.meta.env.VITE_OPENROUTER_API_KEY || '').trim();
+    if (!apiKey) return null;
+    for (const m of candidates) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 40000);
+        const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'Ny fahasalamako'
+          },
+          body: JSON.stringify({
+            model: m,
+            temperature: 0.8,
+            max_tokens: 900,
+            messages: chatMessages
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        const answer = data.choices?.[0]?.message?.content?.trim();
+        if (answer) return answer;
+      } catch { /* modèle suivant */ }
+    }
+    return null;
+  };
+
   const sendMessage = (raw) => {
     const text = (raw ?? input).trim();
     const att = attachment;
@@ -1046,17 +1113,17 @@ function Chatbot() {
         }
       }
 
-      // 2) Conversation générale : GEMINI répond en priorité à l'utilisateur
-      //    (santé ET discussion libre : « bonjour », « ça va », « quoi de neuf »)
+      // 2) Conversation générale : OPENROUTER répond en priorité à l'utilisateur
+      //    (modèle gratuit minimax/minimax-m3:free — santé ET discussion libre)
       const chatPayload = [
         { role: 'system', content: SYSTEM_PROMPT },
         ...transcript,
         { role: 'user', content: text }
       ];
       if (!reply && !att) {
-        reply = await geminiChat(chatPayload);
+        reply = await openrouterChat(chatPayload);
       }
-      // 2bis) Repli sur Groq si Gemini n'est pas configuré ou indisponible
+      // 2bis) Repli sur Groq si OpenRouter n'est pas configuré ou indisponible
       if (!reply && !att) {
         reply = await groqChat(chatPayload);
       }

@@ -1698,6 +1698,65 @@ def ai_gemini():
         return jsonify({"error": "Service IA indisponible."}), 502
 
 
+@app.route('/ai/openrouter', methods=['POST', 'OPTIONS'])
+@app.route('/api/ai/openrouter', methods=['POST', 'OPTIONS'])
+@limiter.limit("60 per minute")
+def ai_openrouter():
+    """Proxy sécurisé vers OPENROUTER.
+
+    La clé API OPENROUTER_API_KEY reste sur le serveur (jamais exposée dans
+    le bundle du frontend). OpenRouter offre un point d'accès unique vers de
+    nombreux modèles (dont Gemini et d'autres). C'est une API compatible
+    "OpenAI Chat Completions", donc on relaie les messages tels quels.
+    Sans clé OPENROUTER_API_KEY, on répond 503 (le frontend retombe alors
+    sur l'appel direct, puis sur Groq / le moteur local).
+    """
+    or_key = os.environ.get('OPENROUTER_API_KEY', '').strip()
+    if not or_key:
+        return jsonify({"error": "Clé OPENROUTER_API_KEY non configurée sur le serveur."}), 503
+
+    data = request.get_json(silent=True) or {}
+    messages = data.get('messages')
+    if not isinstance(messages, list) or not messages:
+        return jsonify({"error": "messages requis"}), 400
+    if len(messages) > 60:
+        return jsonify({"error": "Historique trop long."}), 400
+
+    payload = {
+        "model": data.get('model') or 'minimax/minimax-m3:free',
+        "temperature": float(data.get('temperature', 0.8)),
+        "max_tokens": int(data.get('max_tokens', 900)),
+        "messages": messages
+    }
+    body = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(
+        'https://openrouter.ai/api/v1/chat/completions',
+        data=body,
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + or_key,
+            'HTTP-Referer': 'https://nyfahasalamako.app',
+            'X-Title': 'Ny fahasalamako',
+            'User-Agent': 'SantePlusBackend/1.0'
+        },
+        method='POST'
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            result = json.loads(resp.read().decode('utf-8'))
+        reply = (result.get('choices') or [{}])[0].get('message', {}).get('content')
+        if not reply:
+            return jsonify({"error": "Réponse vide du modèle."}), 502
+        return jsonify({"reply": reply.strip()}), 200
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode('utf-8', 'ignore')[:400]
+        logger.error("OPENROUTER proxy HTTP %s : %s", e.code, detail)
+        return jsonify({"error": "Erreur du service IA (HTTP %s)." % e.code}), 502
+    except Exception as e:
+        logger.error("OPENROUTER proxy erreur : %s", e)
+        return jsonify({"error": "Service IA indisponible."}), 502
+
+
 # Enregistrement des routes d'administration (backoffice)
 # Injection des dépendances pour éviter tout import circulaire
 from admin import create_admin_bp
