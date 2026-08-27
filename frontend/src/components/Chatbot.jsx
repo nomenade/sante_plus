@@ -903,7 +903,7 @@ function Chatbot() {
         (pratique en dev). Sans résultat → Groq puis moteur local.
      ------------------------------------------------------------ */
   const geminiChat = async (chatMessages, model) => {
-    const chosenModel = model || (import.meta.env.VITE_GEMINI_MODEL || 'gemini-3.5-flash');
+    const chosenModel = model || (import.meta.env.VITE_GEMINI_MODEL || 'gemini-3-flash');
 
     // 1) Proxy sécurisé via le backend
     try {

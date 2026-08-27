@@ -1648,7 +1648,7 @@ def ai_gemini():
     if len(messages) > 60:
         return jsonify({"error": "Historique trop long."}), 400
 
-    model = data.get('model') or 'gemini-3.5-flash'
+    model = data.get('model') or 'gemini-3-flash'
 
     # Gemini exige un systemInstruction séparé + des contents sans rôle "system".
     system_parts = []
