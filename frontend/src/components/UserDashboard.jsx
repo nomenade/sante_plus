@@ -164,7 +164,7 @@ function UserDashboard({ userEmail }) {
             </svg>
           </div>
           <div>
-            <strong>Santé<em>+</em></strong>
+            <strong>Ny fahasalamako</strong>
             <span>Carnet de santé personnel</span>
           </div>
         </div>
@@ -254,7 +254,7 @@ function UserDashboard({ userEmail }) {
                 <div className="last-consult">
                   <div className="last-consult-badge">Choléra</div>
                   <p>Diagnostiqué le 10/08/2024</p>
-                  <span className="last-consult-ia">via l'assistant IA Santé+</span>
+                  <span className="last-consult-ia">via l'assistant IA Ny fahasalamako</span>
                 </div>
               </div>
 

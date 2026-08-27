@@ -169,7 +169,7 @@ function Dashboard({ onLogout, userRole, onOpenAdmin, userEmail }) {
             </svg>
           </div>
           <div className="ps-brand-text">
-            <strong>Santé<em>+</em></strong>
+            <strong>Ny fahasalamako</strong>
           </div>
         </div>
 
@@ -225,7 +225,7 @@ function Dashboard({ onLogout, userRole, onOpenAdmin, userEmail }) {
 
           <div className="pt-title">
             <h2>{current.label}</h2>
-            <span>Plateforme Santé+</span>
+            <span>Plateforme Ny fahasalamako</span>
           </div>
 
           <div className="pt-right">
@@ -327,7 +327,7 @@ function Dashboard({ onLogout, userRole, onOpenAdmin, userEmail }) {
         )}
 
         <footer className="platform-footer">
-          <p>© 2024 Santé+ — Votre plateforme de santé intelligente. Tous droits réservés.</p>
+          <p>© 2024 Ny fahasalamako — Votre plateforme de santé intelligente. Tous droits réservés.</p>
           <p className="footer-disclaimer">
             Ce site ne remplace pas l'avis d'un professionnel de santé. En cas d'urgence, appelez le 15 (SAMU).
           </p>

@@ -5,7 +5,11 @@ from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity
 import sqlite3
 import os
 from urllib.parse import urlparse
+import urllib.parse
 import re
+import json
+import urllib.request
+import urllib.error
 import logging
 from datetime import timedelta
 
@@ -1564,6 +1568,136 @@ def get_advice():
         "suggestions": suggestions if suggestions else None
     }), 200
 
+@app.route('/ai/chat', methods=['POST', 'OPTIONS'])
+@app.route('/api/ai/chat', methods=['POST', 'OPTIONS'])
+@limiter.limit("60 per minute")
+def ai_chat():
+    """Proxy sécurisé vers GROK (xAI).
+
+    La clé API XAI_API_KEY reste sur le serveur (jamais exposée dans le
+    bundle du frontend). Le frontend appelle ce endpoint, qui relaie la
+    requête vers https://api.x.ai/v1/chat/completions puis renvoie la
+    réponse. Sans clé XAI_API_KEY configurée, on répond 503 (le frontend
+    se rabat alors sur son moteur local ou sa propre clé directe).
+    """
+    xai_key = os.environ.get('XAI_API_KEY', '').strip()
+    if not xai_key:
+        return jsonify({"error": "Clé XAI_API_KEY non configurée sur le serveur."}), 503
+
+    data = request.get_json(silent=True) or {}
+    messages = data.get('messages')
+    if not isinstance(messages, list) or not messages:
+        return jsonify({"error": "messages requis"}), 400
+    if len(messages) > 60:
+        return jsonify({"error": "Historique trop long."}), 400
+
+    payload = {
+        "model": data.get('model') or 'grok-3-mini',
+        "temperature": float(data.get('temperature', 0.8)),
+        "max_tokens": int(data.get('max_tokens', 700)),
+        "messages": messages
+    }
+    body = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(
+        'https://api.x.ai/v1/chat/completions',
+        data=body,
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + xai_key,
+            'User-Agent': 'SantePlusBackend/1.0'
+        },
+        method='POST'
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            result = json.loads(resp.read().decode('utf-8'))
+        reply = (result.get('choices') or [{}])[0].get('message', {}).get('content')
+        if not reply:
+            return jsonify({"error": "Réponse vide du modèle."}), 502
+        return jsonify({"reply": reply.strip()}), 200
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode('utf-8', 'ignore')[:400]
+        logger.error("GROK proxy HTTP %s : %s", e.code, detail)
+        return jsonify({"error": "Erreur du service IA (HTTP %s)." % e.code}), 502
+    except Exception as e:
+        logger.error("GROK proxy erreur : %s", e)
+        return jsonify({"error": "Service IA indisponible."}), 502
+
+
+@app.route('/ai/gemini', methods=['POST', 'OPTIONS'])
+@app.route('/api/ai/gemini', methods=['POST', 'OPTIONS'])
+@limiter.limit("60 per minute")
+def ai_gemini():
+    """Proxy sécurisé vers GOOGLE GEMINI.
+
+    La clé API GEMINI_API_KEY reste sur le serveur (jamais exposée dans le
+    bundle du frontend). Le frontend envoie ses messages {role, content}
+    plus le modèle ; ce proxy les reformate pour l'API Gemini
+    (systemInstruction + contents) puis renvoie la réponse texte.
+    Sans clé GEMINI_API_KEY, on répond 503 (le frontend retombe alors sur
+    l'appel direct avec VITE_GEMINI_API_KEY, puis sur Groq / le local).
+    """
+    gemini_key = os.environ.get('GEMINI_API_KEY', '').strip()
+    if not gemini_key:
+        return jsonify({"error": "Clé GEMINI_API_KEY non configurée sur le serveur."}), 503
+
+    data = request.get_json(silent=True) or {}
+    messages = data.get('messages')
+    if not isinstance(messages, list) or not messages:
+        return jsonify({"error": "messages requis"}), 400
+    if len(messages) > 60:
+        return jsonify({"error": "Historique trop long."}), 400
+
+    model = data.get('model') or 'gemini-3.5-flash'
+
+    # Gemini exige un systemInstruction séparé + des contents sans rôle "system".
+    system_parts = []
+    contents = []
+    for m in messages:
+        c = (m.get('content') or '').strip()
+        if not c:
+            continue
+        role = m.get('role')
+        if role == 'system':
+            system_parts.append(c)
+        elif role == 'assistant':
+            contents.append({"role": "model", "parts": [{"text": c}]})
+        else:
+            contents.append({"role": "user", "parts": [{"text": c}]})
+
+    if not contents:
+        return jsonify({"error": "Aucun contenu utilisateur."}), 400
+
+    payload = {"contents": contents}
+    if system_parts:
+        payload["systemInstruction"] = {"parts": [{"text": ' '.join(system_parts)}]}
+
+    body = json.dumps(payload).encode('utf-8')
+    url = 'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s' % (
+        model, urllib.parse.quote(gemini_key))
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={'Content-Type': 'application/json', 'User-Agent': 'SantePlusBackend/1.0'},
+        method='POST'
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            result = json.loads(resp.read().decode('utf-8'))
+        parts = (result.get('candidates') or [{}])[0].get('content', {}).get('parts') or []
+        reply = ''.join(p.get('text', '') for p in parts).strip()
+        if not reply:
+            return jsonify({"error": "Réponse vide du modèle."}), 502
+        return jsonify({"reply": reply}), 200
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode('utf-8', 'ignore')[:400]
+        logger.error("GEMINI proxy HTTP %s : %s", e.code, detail)
+        return jsonify({"error": "Erreur du service IA (HTTP %s)." % e.code}), 502
+    except Exception as e:
+        logger.error("GEMINI proxy erreur : %s", e)
+        return jsonify({"error": "Service IA indisponible."}), 502
+
+
 # Enregistrement des routes d'administration (backoffice)
 # Injection des dépendances pour éviter tout import circulaire
 from admin import create_admin_bp
@@ -1572,7 +1706,7 @@ app.register_blueprint(create_admin_bp(get_db_connection, logger, bcrypt, DATABA
 @app.route('/health', methods=['GET', 'OPTIONS'])
 @app.route('/api/health', methods=['GET', 'OPTIONS'])
 def health_check():
-    return jsonify({"status": "ok", "message": "Santé+ API is running"}), 200
+    return jsonify({"status": "ok", "message": "Ny fahasalamako API is running"}), 200
 
 if __name__ == '__main__':
     # Port par défaut aligné sur le frontend et les scripts (5001)
@@ -1581,7 +1715,7 @@ if __name__ == '__main__':
     debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     
     print("=" * 50)
-    print("  Santé+ API Server - Green Edition")
+    print("  Ny fahasalamako API Server - Green Edition")
     print("=" * 50)
     print(f"  Running on {host}:{port}")
     print(f"  Debug mode: {debug}")

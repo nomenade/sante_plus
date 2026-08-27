@@ -83,7 +83,7 @@ function Auth({ onLogin }) {
               <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
             </svg>
           </div>
-          <h1>Sante<strong>+</strong></h1>
+          <h1>Ny fahasalamako</h1>
           <p>{isLogin ? "Deja membre ? Connectez-vous. Sinon, creez un compte." : "Creez votre compte en toute securite."}</p>
         </div>
         <form onSubmit={handleSubmit} className="auth-form">

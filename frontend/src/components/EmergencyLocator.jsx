@@ -15,6 +15,18 @@ const POPULAR_PLACES = [
   'Ankorondrano', 'Mahamasina', 'Anosy', 'Ambanidia', 'Tsaralalana'
 ];
 
+// Liste de SECOURS (indicative) utilisée uniquement si l'API de cartographie
+// en ligne (Overpass) échoue : le réseau est bloqué ou l'API surchargée.
+// Positions approximatives — bien vérifier auprès de l'établissement.
+const FALLBACK_PLACES = [
+  { id: 'fb-1',  name: 'Hôpital Joseph Ravoahangy Andrianavalona (HJRA)', type: 'hospital', lat: -18.8850, lon: 47.4986, address: 'Ampefiloha, Antananarivo', phone: '', hours: '7j/7 – urgences 24h/24', distance: null },
+  { id: 'fb-2',  name: 'CHU de Befelatanana (Hôpital universitaire)', type: 'hospital', lat: -18.9094, lon: 47.5240, address: 'Anosy, Antananarivo', phone: '', hours: '7j/7 – urgences 24h/24', distance: null },
+  { id: 'fb-3',  name: 'Hôpital Andohatapenaka', type: 'hospital', lat: -18.8875, lon: 47.5280, address: 'Andohatapenaka, Antananarivo', phone: '', hours: '', distance: null },
+  { id: 'fb-4',  name: 'Polyclinique d\u2019Ilafy', type: 'clinic', lat: -18.8460, lon: 47.4790, address: 'Ilafy, Antananarivo', phone: '', hours: 'Lun–Sam', distance: null },
+  { id: 'fb-5',  name: 'Clinique Nord (Ambohidratrimo)', type: 'clinic', lat: -18.8130, lon: 47.4350, address: 'Ambohidratrimo, Antananarivo', phone: '', hours: '', distance: null },
+  { id: 'fb-6',  name: 'Pharmacie des Analakely', type: 'pharmacy', lat: -18.9095, lon: 47.5260, address: 'Analakely, Antananarivo', phone: '', hours: 'Lun–Sam', distance: null }
+];
+
 const TYPE_META = {
   hospital: { label: 'Hôpital',   color: '#dc2626', icon: '🏥' },
   clinic:   { label: 'Clinique',  color: '#f59e0b', icon: '🩺' },
@@ -140,21 +152,34 @@ async function overpassQuery(lat, lon, km) {
   out center;`;
   const endpoints = [
     'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter'
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.osm.ch/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
+    'https://overpass.nchc.org.tw/api/interpreter'
   ];
   let lastErr = null;
   for (const ep of endpoints) {
+    // Abandonne un miroir après 16 s pour ne pas bloquer l'interface
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 16000);
     try {
       const res = await fetch(ep, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(query)
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          // Certains miroirs Overpass rejettent les requêtes sans User-Agent
+          'User-Agent': 'SantePlus-Locator/1.0'
+        },
+        body: 'data=' + encodeURIComponent(query),
+        signal: controller.signal
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       return (data.elements || []).map(normalize);
     } catch (e) {
       lastErr = e;
+    } finally {
+      clearTimeout(timer);
     }
   }
   throw lastErr;
@@ -228,8 +253,21 @@ function EmergencyLocator() {
         setTimeout(() => { traceRoute(list[0], c); }, 350);
       }
     } catch {
-      setError('Connexion impossible au service de cartographie. Réessayez dans un instant.');
-      setPlaces([]);
+      // Repli hors-ligne : si la cartographie en ligne échoue (réseau bloqué /
+      // API surchargée), on affiche une liste de secours indicative au lieu
+      // d'une simple erreur, pour que la carte reste utile.
+      const alt = FALLBACK_PLACES
+        .map((p) => ({ ...p, distance: distKm(c, p) }))
+        .filter((p) => p.distance <= Math.max(km, 15))
+        .sort((a, b) => a.distance - b.distance);
+      if (alt.length > 0) {
+        setPlaces(alt);
+        setError('');
+        setAddressNotice('⚠️ Service de cartographie momentanément indisponible — liste de secours indicative affichée (Antananarivo). Vérifiez votre connexion puis réessayez.');
+      } else {
+        setError('Connexion impossible au service de cartographie. Réessayez dans un instant.');
+        setPlaces([]);
+      }
     } finally {
       setLoading(false);
     }

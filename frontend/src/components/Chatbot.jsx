@@ -518,13 +518,13 @@ function generateAiReply(currentMessage, hypotheses, history) {
   //    conversationnelle adaptée (identité, capacités, réassurance...).
   if (/(qui (es|êtes)[ -]?(tu|vous)|tu es qui|vous êtes qui|(ton |votre )nom\b)/.test(t) && symptomsNow.length === 0) {
     return pickUnused([
-      "Je suis votre assistant santé sur Santé+ : je vous écoute, je pose des questions sur vos symptômes et je vous oriente vers les bons réflexes.",
+      "Je suis votre assistant santé sur Ny fahasalamako : je vous écoute, je pose des questions sur vos symptômes et je vous oriente vers les bons réflexes.",
       "Ici, c'est moi qui m'occupe de vous ! Décrivez-moi ce que vous ressentez et je vous aide à y voir plus clair."
     ], aiPast);
   }
   if (/(robot|intelligence artificielle|\bia\b|vraie personne|un humain|etre humain|être humain|vrai médecin|véritable médecin|docteur reel)/.test(t) && t.length < 90) {
     return pickUnused([
-      "Je suis là pour vous accompagner au quotidien sur Santé+, disponible 24h/24. Mes conseils restent indicatifs : en cas de doute sérieux, consultez un professionnel. Parlons de vous, quels sont vos symptômes ?",
+      "Je suis là pour vous accompagner au quotidien sur Ny fahasalamako, disponible 24h/24. Mes conseils restent indicatifs : en cas de doute sérieux, consultez un professionnel. Parlons de vous, quels sont vos symptômes ?",
       "Considérez-moi comme votre compagnon santé de confiance ! Je ne remplace pas un médecin, mais je peux vous aider à préciser ce que vous ressentez."
     ], aiPast);
   }
@@ -765,7 +765,7 @@ function Chatbot() {
           messages: [
             {
               role: 'system',
-              content: `Tu es l'Assistant Santé Intelligent de l'application Santé+. Tu aides les utilisateurs à comprendre leurs symptômes et leurs photos médicales. Tu ne poses jamais de diagnostic définitif : tu donnes des conseils généraux et tu recommandes de consulter un professionnel de santé si besoin. Réponds en français, de façon claire et structurée.`
+              content: `Tu es l'Assistant Santé Intelligent de l'application Ny fahasalamako. Tu aides les utilisateurs à comprendre leurs symptômes et leurs photos médicales. Tu ne poses jamais de diagnostic définitif : tu donnes des conseils généraux et tu recommandes de consulter un professionnel de santé si besoin. Réponds en français, de façon claire et structurée.`
             },
             ...past.map((p) => ({ role: 'assistant', content: p })),
             { role: 'user', content }
@@ -801,8 +801,8 @@ function Chatbot() {
      quotidien. Clé : VITE_GROK_API_KEY (optionnelle).
      ------------------------------------------------------------ */
   const SYSTEM_PROMPT = [
-    "Tu es « l'Assistant Santé » de l'application Santé+, utilisée à Madagascar.",
-    "Identité confidentielle : ne dis JAMAIS que tu es une IA, un modèle, un robot ou Grok.",
+    "Tu es « l'Assistant Santé » de l'application Ny fahasalamako, utilisée à Madagascar.",
+    "Identité confidentielle : ne dis JAMAIS que tu es une IA, un modèle, un robot ou Gemini.",
     "Parle toujours comme une personne bienveillante qui aide ; si on insiste sur ton identité,",
     "reste discret et recentre la conversation sur l'aide que tu peux apporter.",
     "Ton style : chaleureux, direct, naturel et un brin d'humour — tu réponds aux salutations de façon humaine",
@@ -816,8 +816,26 @@ function Chatbot() {
     "ou le centre de santé le plus proche."
   ].join(' ');
 
-  // Appel à l'API officielle GROK (xAI) — compatible OpenAI Chat Completions
+  // Appel à GROK (xAI) — compatible OpenAI Chat Completions.
+  // 1) Voie sécurisée : proxy backend /api/ai/chat (la clé XAI_API_KEY reste
+  //    sur le serveur, jamais embarquée dans le bundle du navigateur).
+  // 2) Repli : appel direct à api.x.ai avec VITE_GROK_API_KEY (pratique en dev).
   const grokChat = async (chatMessages, model) => {
+    const chosenModel = model || (import.meta.env.VITE_GROK_MODEL || 'grok-3-mini');
+
+    // 1) Proxy sécurisé via le backend
+    try {
+      const res = await axios.post(`${API_URL}/ai/chat`, {
+        messages: chatMessages,
+        model: chosenModel,
+        temperature: 0.8,
+        max_tokens: 700
+      }, { timeout: 45000 });
+      const reply = res.data && res.data.reply;
+      if (reply) return reply.trim();
+    } catch { /* backend indisponible / clé absente → repli ci-dessous */ }
+
+    // 2) Repli : appel direct avec VITE_GROK_API_KEY
     const apiKey = (import.meta.env.VITE_GROK_API_KEY || '').trim();
     if (!apiKey) return null;
     try {
@@ -830,7 +848,7 @@ function Chatbot() {
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: model || (import.meta.env.VITE_GROK_MODEL || 'grok-3-mini'),
+          model: chosenModel,
           temperature: 0.8,
           max_tokens: 700,
           messages: chatMessages
@@ -871,6 +889,71 @@ function Chatbot() {
       if (!resp.ok) return null;
       const data = await resp.json();
       const answer = data.choices?.[0]?.message?.content?.trim();
+      return answer || null;
+    } catch {
+      return null;
+    }
+  };
+
+  /* ------------------------------------------------------------
+     GEMINI — l'IA qui répond aux utilisateurs (Google AI)
+     1) Voie sécurisée : proxy backend /api/ai/gemini (la clé
+        GEMINI_API_KEY reste sur le serveur, jamais dans le navigateur).
+     2) Repli : appel direct à l'API Google avec VITE_GEMINI_API_KEY
+        (pratique en dev). Sans résultat → Groq puis moteur local.
+     ------------------------------------------------------------ */
+  const geminiChat = async (chatMessages, model) => {
+    const chosenModel = model || (import.meta.env.VITE_GEMINI_MODEL || 'gemini-3.5-flash');
+
+    // 1) Proxy sécurisé via le backend
+    try {
+      const res = await axios.post(`${API_URL}/ai/gemini`, {
+        messages: chatMessages,
+        model: chosenModel
+      }, { timeout: 45000 });
+      const reply = res.data && res.data.reply;
+      if (reply) return reply.trim();
+    } catch { /* backend indisponible / clé absente → repli ci-dessous */ }
+
+    // 2) Repli : appel direct avec VITE_GEMINI_API_KEY
+    const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || '').trim();
+    if (!apiKey) return null;
+
+    // Gemini exige que le message "system" soit passé séparément
+    // (systemInstruction) et non dans contents.
+    let systemText = '';
+    const contents = [];
+    for (const m of chatMessages || []) {
+      const content = (m.content || '').trim();
+      if (m.role === 'system') {
+        if (content) systemText += (systemText ? ' ' : '') + content;
+      } else if (m.role === 'user') {
+        if (content) contents.push({ role: 'user', parts: [{ text: content }] });
+      } else if (m.role === 'assistant') {
+        if (content) contents.push({ role: 'model', parts: [{ text: content }] });
+      }
+    }
+    if (contents.length === 0) return null;
+    const body = { contents };
+    if (systemText) body.systemInstruction = { parts: [{ text: systemText }] };
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 40000);
+      const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        }
+      );
+      clearTimeout(timer);
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      const parts = data?.candidates?.[0]?.content?.parts;
+      const answer = (Array.isArray(parts) ? parts.map((p) => p.text || '').join('') : '').trim();
       return answer || null;
     } catch {
       return null;
@@ -963,7 +1046,7 @@ function Chatbot() {
         }
       }
 
-      // 2) Conversation générale : GROK répond en priorité à l'utilisateur
+      // 2) Conversation générale : GEMINI répond en priorité à l'utilisateur
       //    (santé ET discussion libre : « bonjour », « ça va », « quoi de neuf »)
       const chatPayload = [
         { role: 'system', content: SYSTEM_PROMPT },
@@ -971,9 +1054,9 @@ function Chatbot() {
         { role: 'user', content: text }
       ];
       if (!reply && !att) {
-        reply = await grokChat(chatPayload);
+        reply = await geminiChat(chatPayload);
       }
-      // 2bis) Repli sur Groq si Grok n'est pas configuré ou indisponible
+      // 2bis) Repli sur Groq si Gemini n'est pas configuré ou indisponible
       if (!reply && !att) {
         reply = await groqChat(chatPayload);
       }

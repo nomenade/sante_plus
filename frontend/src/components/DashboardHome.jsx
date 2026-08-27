@@ -166,7 +166,7 @@ function DashboardHome({ userEmail, onNavigate }) {
         <div className="dh-hero-glow"></div>
         <div className="dh-hero-text">
           <span className="dh-hero-badge">
-            <span className="dh-dot"></span> Plateforme Santé+
+            <span className="dh-dot"></span> Plateforme Ny fahasalamako
           </span>
           <h2>{greeting()}, {name.split(' ')[0]} 👋</h2>
           <p>Voici l'aperçu de votre espace santé. Retrouvez tous vos outils, rappels et statistiques au même endroit.</p>
