@@ -1027,6 +1027,71 @@ function Chatbot() {
     return null;
   };
 
+  /* ------------------------------------------------------------
+     OPENROUTER — analyse d'image/photo (modèle multimodal gratuit)
+     minimax/minimax-m3:free comprend les images ET les vidéos.
+     Fonctionne via le proxy backend sécurisé, puis en direct.
+     ------------------------------------------------------------ */
+  const openrouterVisionChat = async (text, att, transcript) => {
+    const visionModels = [
+      import.meta.env.VITE_OPENROUTER_MODEL || 'minimax/minimax-m3:free',
+      'google/gemma-4-31b-it:free',
+      'google/gemma-4-26b-a4b-it:free'
+    ];
+    const dataUrl = att.type === 'video' ? null : await buildImageDataUrl(att);
+    if (!dataUrl) return null; // vidéo refusée ici (pas de conversion en image)
+
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...transcript,
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: `Photo jointe (« ${att.name} »). ${text || 'Décris ce que tu vois et conseille-moi.'}` },
+          { type: 'image_url', image_url: { url: dataUrl } }
+        ]
+      }
+    ];
+
+    // 1) Proxy backend sécurisé
+    for (const m of visionModels) {
+      try {
+        const res = await axios.post(`${API_URL}/ai/openrouter`, {
+          messages, model: m, temperature: 0.5, max_tokens: 900
+        }, { timeout: 45000 });
+        const r = res.data && res.data.reply;
+        if (r) return r.trim();
+      } catch { /* modèle suivant */ }
+    }
+
+    // 2) Appel direct
+    const apiKey = (import.meta.env.VITE_OPENROUTER_API_KEY || '').trim();
+    if (!apiKey) return null;
+    for (const m of visionModels) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 40000);
+        const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'Ny fahasalamako'
+          },
+          body: JSON.stringify({ model: m, temperature: 0.5, max_tokens: 900, messages }),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        const answer = data.choices?.[0]?.message?.content?.trim();
+        if (answer) return answer;
+      } catch { /* modèle suivant */ }
+    }
+    return null;
+  };
+
   const sendMessage = (raw) => {
     const text = (raw ?? input).trim();
     const att = attachment;
@@ -1068,8 +1133,12 @@ function Chatbot() {
         .map((m) => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text || '' }))
         .filter((m) => m.content);
 
+      // 0) Photo jointe + OPENROUTER (minimax multimédia GRATUIT) en premier
+      //    → analyse l'image directement, sans crédit ni clé supplémentaire.
+      let reply = att ? await openrouterVisionChat(text, att, transcript) : null;
+
       // 1) Photo/vidéo jointe + clé OpenAI → IA visuelle OpenAI
-      let reply = att ? await generateVisionReply(text, att, history) : null;
+      if (!reply && att) reply = await generateVisionReply(text, att, history);
 
       // 1bis) Photo jointe + GROK → vision Grok (modèle multimodal)
       if (!reply && att && att.type !== 'video') {

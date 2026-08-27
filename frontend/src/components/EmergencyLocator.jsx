@@ -41,6 +41,11 @@ const FILTERS = {
   pharmacie: ['pharmacy']
 };
 
+// Rayon de recherche par défaut (km). 20 km garantit d'afficher TOUS les
+// pharmacies, hôpitaux et médecins d'une zone urbaine (ex: Analakely,
+// Andavamamba, Mahamasina…) dès qu'on tape un lieu exact ou une suggestion.
+const SEARCH_RADIUS_KM = 20;
+
 // Distance orthodromique en km
 function distKm(a, b) {
   const R = 6371;
@@ -207,7 +212,7 @@ function EmergencyLocator() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [addressNotice, setAddressNotice] = useState('');
   const suggestionsRef = useRef(null);
-  const [radius, setRadius] = useState(10);
+  const [radius, setRadius] = useState(20);
   const [filter, setFilter] = useState('tous');
   const [selectedId, setSelectedId] = useState(null);
   const [error, setError] = useState('');
@@ -273,9 +278,9 @@ function EmergencyLocator() {
     }
   }, []);
 
-  // Géolocalisation au premier chargement (haute précision)
+    // Géolocalisation au premier chargement (haute précision)
   useEffect(() => {
-    if (!navigator.geolocation) { loadPlaces(DEFAULT_CENTER, 10); return; }
+    if (!navigator.geolocation) { loadPlaces(DEFAULT_CENTER, SEARCH_RADIUS_KM); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -285,9 +290,9 @@ function EmergencyLocator() {
         setCenter(p);
         setCenterLabel(gpsLabel(acc));
         setLocating(false);
-        loadPlaces(p, 10);
+        loadPlaces(p, SEARCH_RADIUS_KM);
       },
-      () => { setLocating(false); loadPlaces(DEFAULT_CENTER, 10); },
+      () => { setLocating(false); loadPlaces(DEFAULT_CENTER, SEARCH_RADIUS_KM); },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -454,7 +459,9 @@ function EmergencyLocator() {
     const p = { lat: s.lat, lon: s.lon };
     setCenter(p);
     setCenterLabel(s.label.split(',').slice(0, 3).join(','));
-    loadPlaces(p, radius, true);
+    // Rayon généreux : quand on cherche un lieu exact, on affiche TOUS les
+    // pharmacies, hôpitaux et médecins de la zone (20 km minimum).
+    loadPlaces(p, Math.max(radius, SEARCH_RADIUS_KM), true);
     if (suggestionsRef.current) suggestionsRef.current.blur();
   };
   // Fermer les suggestions en cliquant ailleurs
@@ -485,7 +492,9 @@ function EmergencyLocator() {
       setCenterLabel(label);
       setSuggestions([]);
       setShowSuggestions(false);
-      loadPlaces(p, radius, true);
+      // Rayon généreux : quand on cherche un lieu exact, on affiche TOUS les
+      // pharmacies, hôpitaux et médecins de la zone (20 km minimum).
+      loadPlaces(p, Math.max(radius, SEARCH_RADIUS_KM), true);
     } catch {
       setError('Recherche impossible (vérifiez votre connexion).');
     } finally {
