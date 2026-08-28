@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Chatbot from './Chatbot';
+import { readConsultations } from '../utils/stats';
 import './UserDashboard.css';
 
 const HYDRATION_TARGET = 1.8; // litre par jour
@@ -23,10 +24,10 @@ function displayNameFromEmail(email) {
   return name || 'Utilisateur';
 }
 
-const DEFAULT_MEDICATIONS = [
-  { id: 1, name: 'Doxycycline', dosage: '100mg', posologie: '2 fois/jour', rappel: false },
-  { id: 2, name: 'Paracétamol', dosage: '500mg', posologie: '3 fois/jour', rappel: true }
-];
+// Nouvel utilisateur : AUCUN médicament pré-rempli.
+// Les médicaments et rappels n'apparaissent que s'ils sont réellement
+// ajoutés par l'utilisateur dans son carnet de santé.
+const DEFAULT_MEDICATIONS = [];
 
 const NAV_ITEMS = [
   { id: 'accueil', label: 'Accueil', icon: (
@@ -76,8 +77,9 @@ const initialsOf = (name) =>
 
 function UserDashboard({ userEmail }) {
   const [activeView, setActiveView] = useState('accueil');
-    const [hydration, setHydration] = useState(() => {
-    try { return parseFloat(localStorage.getItem('santeHydration')) || 1.2; } catch { return 1.2; }
+  const [hydration, setHydration] = useState(() => {
+    // Nouvel utilisateur : 0 L bu (aucune hydratation enregistrée)
+    try { return parseFloat(localStorage.getItem('santeHydration')) || 0; } catch { return 0; }
   });
   const [medications, setMedications] = useState(() => {
     try {
@@ -106,6 +108,9 @@ function UserDashboard({ userEmail }) {
     }
   });
   const [toast, setToast] = useState(null);
+  // Historique RÉEL des consultations : rempli automatiquement par
+  // l'assistant IA et le Symptom Checker (vide pour un nouvel utilisateur)
+  const [consultations] = useState(() => readConsultations());
 
     // Persistance du profil
   useEffect(() => {
@@ -272,9 +277,19 @@ function UserDashboard({ userEmail }) {
                   <span>Dernière consultation</span>
                 </div>
                 <div className="last-consult">
-                  <div className="last-consult-badge">Choléra</div>
-                  <p>Diagnostiqué le 10/08/2024</p>
-                  <span className="last-consult-ia">via l'assistant IA Ny fahasalamako</span>
+                  {consultations.length === 0 ? (
+                    <>
+                      <div className="last-consult-badge">—</div>
+                      <p>Aucune consultation enregistrée</p>
+                      <span className="last-consult-ia">Analysez vos symptômes via l'assistant IA ou le Symptom Checker</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="last-consult-badge">{consultations[0].title}</div>
+                      <p>Enregistrée le {consultations[0].date}</p>
+                      <span className="last-consult-ia">{consultations[0].description}</span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -289,7 +304,15 @@ function UserDashboard({ userEmail }) {
                   <span>Médicaments en cours</span>
                 </div>
                 <ul className="med-list">
-                  {medications.map((m) => (
+                  {medications.length === 0 ? (
+                    <li className="med-item">
+                      <div className="med-info">
+                        <strong>Aucun médicament en cours</strong>
+                        <span>Ajoutez vos traitements pour activer des rappels.</span>
+                      </div>
+                    </li>
+                  ) : (
+                    medications.map((m) => (
                     <li key={m.id} className="med-item">
                       <div className="med-info">
                         <strong>{m.name} {m.dosage}</strong>
@@ -305,7 +328,8 @@ function UserDashboard({ userEmail }) {
                         {m.rappel ? '🔔 Actif' : '🔕 Rappel'}
                       </span>
                     </li>
-                  ))}
+                    ))
+                  )}
                 </ul>
               </div>
 
@@ -357,27 +381,25 @@ function UserDashboard({ userEmail }) {
           <div className="ud-view">
             <h2 className="ud-view-title">Historique des consultations</h2>
             <div className="history-list">
-              <div className="history-item">
-                <span className="history-date">10/08/2024</span>
-                <div>
-                  <strong>Choléra</strong>
-                  <p>Consultation via l'assistant IA — risque élevé de déshydratation.</p>
+              {consultations.length === 0 ? (
+                <div className="history-item">
+                  <span className="history-date">—</span>
+                  <div>
+                    <strong>Aucune consultation enregistrée</strong>
+                    <p>Vos analyses via l'assistant IA ou le Symptom Checker apparaîtront ici automatiquement.</p>
+                  </div>
                 </div>
-              </div>
-              <div className="history-item">
-                <span className="history-date">02/08/2024</span>
-                <div>
-                  <strong>Gastro-entérite</strong>
-                  <p>Conseils de réhydratation orale et repos.</p>
-                </div>
-              </div>
-              <div className="history-item">
-                <span className="history-date">18/07/2024</span>
-                <div>
-                  <strong>Migraine</strong>
-                  <p>Recommandations : hydratation et réduction du stress.</p>
-                </div>
-              </div>
+              ) : (
+                consultations.map((c) => (
+                  <div className="history-item" key={c.id}>
+                    <span className="history-date">{c.date}</span>
+                    <div>
+                      <strong>{c.title}</strong>
+                      <p>{c.description}</p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -414,7 +436,15 @@ function UserDashboard({ userEmail }) {
           <div className="ud-view">
             <h2 className="ud-view-title">Rappels de prise</h2>
             <div className="rappels-list">
-              {medications.map((m) => (
+              {medications.length === 0 ? (
+                <div className="rappel-item">
+                  <div>
+                    <strong>Aucun rappel configuré</strong>
+                    <span>Ajoutez un médicament dans votre carnet pour créer un rappel de prise.</span>
+                  </div>
+                </div>
+              ) : (
+                medications.map((m) => (
                 <div key={m.id} className="rappel-item">
                   <span className={`rappel-dot ${m.rappel ? 'on' : ''}`}></span>
                   <div>
@@ -431,7 +461,8 @@ function UserDashboard({ userEmail }) {
                     {m.rappel ? '🔔 Actif' : '🔕 Inactif'}
                   </span>
                 </div>
-              ))}
+                ))
+              )}
               <div className="rappel-note">
                 💡 Activez un rappel pour être notifié à l'heure de chaque prise de médicament.
               </div>

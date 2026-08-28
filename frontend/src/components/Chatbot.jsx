@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { incrementCount, recordConsultation } from '../utils/stats';
 import './Chatbot.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5001/api';
@@ -1203,19 +1204,15 @@ function Chatbot() {
       }
 
       // Statistiques d'usage RÉELLES affichées sur le tableau de bord :
-      // +1 analyse IA à chaque réponse, +1 consultation si symptômes détectés
-      try {
-        localStorage.setItem(
-          'santeAiCount',
-          String((parseInt(localStorage.getItem('santeAiCount') || '0', 10) || 0) + 1)
+      // +1 analyse IA à chaque réponse du chatbot ; si des symptômes sont
+      // détectés, une consultation RÉELLE est enregistrée (historique + compteur)
+      incrementCount('santeAiCount');
+      if (updatedHyp && updatedHyp.length > 0) {
+        recordConsultation(
+          updatedHyp[0].disease,
+          `Consultation via l'assistant IA — symptômes évoqués : ${text.slice(0, 120)}`
         );
-        if (updatedHyp && updatedHyp.length > 0) {
-          localStorage.setItem(
-            'santeConsultCount',
-            String((parseInt(localStorage.getItem('santeConsultCount') || '0', 10) || 0) + 1)
-          );
-        }
-      } catch { /* noop */ }
+      }
 
       setMessages((prev) => [
         ...prev,

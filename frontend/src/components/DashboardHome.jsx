@@ -1,4 +1,5 @@
 import React from 'react';
+import { readCount } from '../utils/stats';
 import './DashboardHome.css';
 
 // Récupère le prénom affichable depuis le profil local ou l'email
@@ -145,7 +146,7 @@ function daysOfTracking() {
   } catch { return 1; }
 }
 
-// Heure du PROCHAIN rappel de prise (ex. « 12:30 ») — vraie donnée de la liste.
+const TIP_OF_DAY = {
   title: 'Conseil du jour',
   body: 'Praticien de 30 minutes de marche rapide aide à réduire le stress et à renforcer votre cœur. Bougez un peu chaque jour !',
   tag: 'Bien-être',
@@ -159,7 +160,7 @@ function DashboardHome({ userEmail, onNavigate }) {
   const activityCards = [
     { label: 'Consultations enregistrées', icon: '📋', color: '#10b981', value: readCount('santeConsultCount') },
     { label: 'Analyses IA réalisées', icon: '🤖', color: '#8b5cf6', value: readCount('santeAiCount') },
-    { label: 'Rappels actifs', icon: '🔔', color: '#f59e0b', value: upcomingReminders() },
+    { label: 'Rappels actifs', icon: '🔔', color: '#f59e0b', value: getActiveReminders().length },
     { label: 'Jours de suivi', icon: '🔥', color: '#ef4444', value: daysOfTracking() },
   ];
 

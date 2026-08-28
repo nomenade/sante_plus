@@ -1433,7 +1433,7 @@ def register():
     if not any(char in '!@#$%^&*()_+-=[]{}|;:,.<>?' for char in password):
         return jsonify({"error": "Le mot de passe doit contenir au moins un caractère spécial (!@#$%^&*...)"}), 400
     
-        hashed_password = bcrypt.generate_password_hash(password, rounds=10).decode('utf-8')
+    hashed_password = bcrypt.generate_password_hash(password, rounds=10).decode('utf-8')
     conn = None
     try:
         conn = get_db_connection()

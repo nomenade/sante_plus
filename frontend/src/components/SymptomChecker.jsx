@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { DISEASE_INFO } from './symptomData';
+import { recordConsultation } from '../utils/stats';
 import './SymptomChecker.css';
 
 // Normalise un texte (minuscules, sans accents) pour la recherche approximative
@@ -425,13 +426,15 @@ function SymptomChecker() {
       showToast('Sélectionnez au moins un symptôme', 'error');
       return;
     }
-    // Statistique d'usage réelle : une consultation de plus pour le tableau de bord
-    try {
-      localStorage.setItem(
-        'santeConsultCount',
-        String((parseInt(localStorage.getItem('santeConsultCount') || '0', 10) || 0) + 1)
-      );
-    } catch { /* noop */ }
+    // Statistique d'usage réelle : une consultation RÉELLE de plus
+    // (compteur + historique) pour le tableau de bord
+    const symptomNames = selectedSymptoms.map(symptomLabel).filter(Boolean).join(', ');
+    recordConsultation(
+      'Analyse des symptômes',
+      symptomNames
+        ? `Analyse lancée depuis le Symptom Checker — symptômes : ${symptomNames}`
+        : 'Analyse lancée depuis le Symptom Checker'
+    );
     runAnalysisFlow(buildEffectiveIds(customSymptoms));
   };
 
