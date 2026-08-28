@@ -14,6 +14,8 @@ env/
 # Database
 backend/health.db
 backend/health.db-journal
+backend/health.db-wal
+backend/health.db-shm
 
 # Node
 node_modules/

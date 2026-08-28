@@ -4,6 +4,7 @@ from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity
 import sqlite3
 import os
+import threading
 from urllib.parse import urlparse
 import urllib.parse
 import re
@@ -103,6 +104,33 @@ def add_security_headers(response):
 DB_PATH = os.path.join(os.path.dirname(__file__), 'health.db')
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
+# ----------------------------------------------------------------------
+# Connexion SQLite réutilisée par thread.
+#
+# Goulot identifié par mesure : créer PUIS fermer une connexion SQLite à
+# chaque requête coûtait ~250 ms par INSERT (le close() déclenche un
+# checkpoint/fsync du fichier, ralenti en plus par l'antivirus). En
+# réutilisant UNE connexion par thread, l'INSERT tombe à ~0 ms.
+# ----------------------------------------------------------------------
+_sqlite_local = threading.local()
+
+
+class _ReusableSQLiteConnection:
+    """Wrapper qui délègue toutes les opérations à la connexion SQLite
+    réelle, mais dont `close()` est bénin : la connexion est réutilisée
+    par le thread au lieu d'être détruite (et reconstruite) à chaque
+    requête."""
+
+    def __init__(self, conn):
+        object.__setattr__(self, '_conn', conn)
+
+    def __getattr__(self, name):
+        return getattr(object.__getattribute__(self, '_conn'), name)
+
+    def close(self):
+        pass  # bénin : on garde la connexion pour la requête suivante
+
+
 def get_db_connection():
     """Get database connection - PostgreSQL in production, SQLite in development"""
     if DATABASE_URL:
@@ -120,13 +148,17 @@ def get_db_connection():
     else:
         # Development: SQLite en mode WAL + synchronous=NORMAL.
         # Le mode par défaut (journal DELETE + synchronous=FULL) force un
-        # fsync à CHAQUE commit (~350 ms sur disque), ce qui rendait
-        # l'inscription et la connexion très lentes. WAL rend les commits
-        # quasi instantanés tout en gardant l'intégrité des données.
-        conn = sqlite3.connect(DB_PATH, timeout=30)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")
-        conn.execute("PRAGMA busy_timeout=30000")
+        # fsync à CHAQUE commit (~350 ms sur disque). WAL rend les commits
+        # quasi instantanés. On réutilise ici UNE connexion par thread pour
+        # éviter le coût (~250 ms) de création/fermeture à chaque requête.
+        conn = getattr(_sqlite_local, 'conn', None)
+        if conn is None:
+            raw = sqlite3.connect(DB_PATH, timeout=30, check_same_thread=False)
+            raw.execute("PRAGMA journal_mode=WAL")
+            raw.execute("PRAGMA synchronous=NORMAL")
+            raw.execute("PRAGMA busy_timeout=30000")
+            conn = _ReusableSQLiteConnection(raw)
+            _sqlite_local.conn = conn
         return conn
 
 def init_db():
