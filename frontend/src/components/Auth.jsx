@@ -49,21 +49,28 @@ function Auth({ onLogin }) {
     try {
       if (isLogin) {
         const res = await axios.post(`${API_URL}/login`, { email, password });
-        setSuccessMessage('Connexion reussie !');
-        setTimeout(() => onLogin(res.data.token, res.data.role, email), 800);
+        // Connexion immédiate (délai artificiel de 800 ms supprimé)
+        onLogin(res.data.token, res.data.role, email);
       } else {
-        await axios.post(`${API_URL}/register`, { email, password });
-        setSuccessMessage('Compte cree avec succes !');
-        setEmail('');
-        setPassword('');
-        setShowPassword(false);
-        setTimeout(() => {
+        const res = await axios.post(`${API_URL}/register`, { email, password });
+        if (res.data && res.data.token) {
+          // Compte créé => connexion AUTOMATIQUE immédiate : on arrive
+          // directement sur le tableau de bord (plus de ressaisie,
+          // plus de double attente).
+          setSuccessMessage('Compte cree avec succes !');
+          onLogin(res.data.token, res.data.role, email);
+        } else {
+          // Repli (ancien backend sans token) : bascule vers le formulaire
+          // de connexion sans délai artificiel.
+          setSuccessMessage('Compte cree avec succes !');
+          setEmail('');
+          setPassword('');
+          setShowPassword(false);
           setIsLogin(true);
-          setSuccessMessage('');
           window.dispatchEvent(new CustomEvent('auth-register-success', {
             detail: { message: 'Compte cree ! Connectez-vous.' }
           }));
-        }, 1500);
+        }
       }
     } catch (err) {
       const msg = err.response?.data?.error || 'Erreur reseau.';

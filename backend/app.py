@@ -111,9 +111,15 @@ def get_db_connection():
         )
         return conn
     else:
-        # Development: SQLite (timeout=15s pour éviter "database is locked"
-        # lorsque plusieurs requêtes accèdent à la base simultanément)
-        conn = sqlite3.connect(DB_PATH, timeout=15)
+        # Development: SQLite en mode WAL + synchronous=NORMAL.
+        # Le mode par défaut (journal DELETE + synchronous=FULL) force un
+        # fsync à CHAQUE commit (~350 ms sur disque), ce qui rendait
+        # l'inscription et la connexion très lentes. WAL rend les commits
+        # quasi instantanés tout en gardant l'intégrité des données.
+        conn = sqlite3.connect(DB_PATH, timeout=30)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA busy_timeout=30000")
         return conn
 
 def init_db():
@@ -1439,12 +1445,24 @@ def register():
         conn = get_db_connection()
         c = conn.cursor()
         if DATABASE_URL:
-            c.execute("INSERT INTO users (email, password, role) VALUES (%s, %s, %s)", (email, hashed_password, 'user'))
+            c.execute(
+                "INSERT INTO users (email, password, role) VALUES (%s, %s, %s) RETURNING id",
+                (email, hashed_password, 'user')
+            )
+            user_id = c.fetchone()[0]
         else:
             c.execute("INSERT INTO users (email, password, role) VALUES (?, ?, ?)", (email, hashed_password, 'user'))
+            user_id = c.lastrowid
         conn.commit()
-        logger.info(f"Nouvel utilisateur inscrit: {email}")
-        return jsonify({"message": "Compte créé avec succès ! Vous pouvez maintenant vous connecter."}), 201
+        # Token JWT renvoyé immédiatement : le frontend peut connecter
+        # automatiquement l'utilisateur sans une seconde étape de saisie.
+        token = create_access_token(identity=str(user_id))
+        logger.info(f"Nouvel utilisateur inscrit: {email} (connexion automatique)")
+        return jsonify({
+            "message": "Compte créé avec succès ! Vous pouvez maintenant vous connecter.",
+            "token": token,
+            "role": "user"
+        }), 201
     except Exception as e:
         if 'unique' in str(e).lower() or 'duplicate' in str(e).lower():
             return jsonify({"error": "Cet email existe déjà."}), 400
