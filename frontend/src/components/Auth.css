@@ -10,7 +10,7 @@
   overflow: hidden;
 }
 
-/* Animated background circles */
+/* Animated background circles (animation statique pour économiser le GPU) */
 .auth-container::before {
   content: '';
   position: absolute;
@@ -20,7 +20,6 @@
   top: -200px;
   right: -200px;
   border-radius: 50%;
-  animation: floatBlob 8s ease-in-out infinite;
 }
 
 .auth-container::after {
@@ -32,7 +31,6 @@
   bottom: -150px;
   left: -150px;
   border-radius: 50%;
-  animation: floatBlob 10s ease-in-out infinite reverse;
 }
 
 @keyframes floatBlob {
@@ -44,8 +42,6 @@
 /* ========== AUTH CARD (Compact) ========== */
 .auth-card {
   background: #ffffff;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
   border: 1px solid rgba(226, 232, 240, 0.7);
   border-radius: 18px;
   padding: 26px 24px;

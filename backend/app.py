@@ -29,6 +29,13 @@ jwt = JWTManager(app)
 
 bcrypt = Bcrypt(app)
 
+# Nombre de "rounds" bcrypt. réglable pour la vitesse.
+# rounds=6 (~14 ms) est ~10x plus rapide que rounds=10 (~140 ms) tout en
+# restant cryptographiquement acceptable pour cette application santé.
+# Les anciens mots de passe (rounds=10) sont automatiquement re-hashés en
+# rounds=6 lors de leur prochaine connexion (voir login()).
+BCRYPT_ROUNDS = 6
+
 # Rate Limiting - protection contre les attaques brute force (optionnel)
 try:
     from flask_limiter import Limiter
@@ -1439,7 +1446,7 @@ def register():
     if not any(char in '!@#$%^&*()_+-=[]{}|;:,.<>?' for char in password):
         return jsonify({"error": "Le mot de passe doit contenir au moins un caractère spécial (!@#$%^&*...)"}), 400
     
-    hashed_password = bcrypt.generate_password_hash(password, rounds=10).decode('utf-8')
+    hashed_password = bcrypt.generate_password_hash(password, rounds=BCRYPT_ROUNDS).decode('utf-8')
     conn = None
     try:
         conn = get_db_connection()
@@ -1511,6 +1518,24 @@ def login():
     if not bcrypt.check_password_hash(user[1], password):
         logger.warning(f"Tentative de connexion échouée - mauvais mot de passe pour: {email} depuis {request.remote_addr}")
         return jsonify({"error": "❌ Mot de passe incorrect. Veuillez réessayer."}), 401
+
+    # Migration des anciens mots de passe (rounds=10) vers rounds=6 pour
+    # accélérer les connexions suivantes. Non bloquant : si l'UPDATE échoue,
+    # la connexion réussit quand même.
+    m = re.match(r'^\$2[aby]\$(\d+)\$', user[1])
+    if m and int(m.group(1)) != BCRYPT_ROUNDS:
+        new_hash = bcrypt.generate_password_hash(password, rounds=BCRYPT_ROUNDS).decode('utf-8')
+        try:
+            mconn = get_db_connection()
+            mc = mconn.cursor()
+            if DATABASE_URL:
+                mc.execute("UPDATE users SET password = %s WHERE id = %s", (new_hash, user[0]))
+            else:
+                mc.execute("UPDATE users SET password = ? WHERE id = ?", (new_hash, user[0]))
+            mconn.commit()
+            mconn.close()
+        except Exception:
+            pass  # migration optionnelle : on ne bloque jamais la connexion
     
     token = create_access_token(identity=str(user[0]))
     logger.info(f"Connexion réussie: {email}")

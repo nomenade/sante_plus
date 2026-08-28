@@ -8,15 +8,22 @@
     <meta name="description" content="Ny fahasalamako - Assistant santé intelligent pour des conseils personnalisés sur les maladies, l'alimentation et les médicaments" />
     <meta name="theme-color" content="#059669" />
     <meta name="color-scheme" content="light dark" />
-            <!-- Leaflet CSS chargé en premier pour éviter le flash blanc -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+            <!-- Leaflet CSS chargé en mode non-bloquant (media swap) pour ne pas
+         retarder l'affichage du formulaire de connexion -->
+    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"></noscript>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Polices chargées en mode non-bloquant : le formulaire s'affiche
+         immédiatement, sans attendre le téléchargement des fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
   </head>
   <body>
-    <!-- Leaflet JS chargé AVANT React afin que window.L soit toujours disponible -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet JS chargé en mode "defer" (non-bloquant) : il ne bloque plus
+         le rendu du formulaire. window.L reste disponible pour EmergencyLocator
+         car les scripts defer s'exécutent avant React. -->
+    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
