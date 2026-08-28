@@ -89,17 +89,48 @@ const QUICK_ACTIONS = [
   },
 ];
 
-const REMINDERS = [
-  { id: 1, name: 'Doxycycline', dosage: '100mg', time: '08:00', emoji: '💊' },
-  { id: 2, name: 'Paracétamol', dosage: '500mg', time: '12:30', emoji: '💊' },
-  { id: 3, name: 'Hydratation', dosage: 'Objectif 1,8L', time: 'Toute la journée', emoji: '💧' },
-];
+// Liste des rappels (médicaments avec rappel activé + hydratation).
+// Dynamique : lit les vraies données du carnet de santé. Pour un nouvel
+// utilisateur (aucune donnée), la liste est vide → 0 rappel.
+function getActiveReminders() {
+  const meds = readMedications();
+  return meds
+    .filter((m) => m.rappel !== false && m.posologie && /^(\d{1,2}):(\d{2})$/.test(m.posologie))
+    .map((m) => {
+      const [h, min] = m.posologie.split(':').map(Number);
+      return { ...m, emoji: m.emoji || '💊', timeMins: h * 60 + min };
+    });
+}
 
-/* ---- Statistiques RÉELLES : elles reflètent votre vraie utilisation ---- */
+// Heure du PROCHAIN rappel de prise (ex. « 12:30 »).
+// Pour un nouvel utilisateur sans rappel : « --:-- »
+function nextReminderTime() {
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const times = getActiveReminders()
+    .map((r) => r.timeMins)
+    .sort((a, b) => a - b);
+  if (!times.length) return '--:--';
+  const mins = times.find((t) => t >= nowMins) ?? times[0];
+  return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+}
 
-// Lit un compteur d'usage persistant (analyses IA, consultations…)
-function readCount(key) {
-  try { return parseInt(localStorage.getItem(key) || '0', 10) || 0; } catch { return 0; }
+// Nombre de rappels encore actifs maintenant (heure courante ou future)
+function upcomingReminders() {
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  return getActiveReminders().filter((r) => r.timeMins >= nowMins).length;
+}
+
+// Lit la liste réelle des médicaments depuis le carnet de santé.
+// Renvoie [] pour un NOUEL utilisateur (aucune donnée) → donc 0 rappels.
+function readMedications() {
+  try {
+    const saved = localStorage.getItem('santeMedications');
+    if (!saved) return []; // nouvel utilisateur : rien du tout
+    const arr = JSON.parse(saved);
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
 }
 
 // Jours de suivi : comptés depuis la première ouverture du tableau de bord
@@ -115,33 +146,6 @@ function daysOfTracking() {
 }
 
 // Heure du PROCHAIN rappel de prise (ex. « 12:30 ») — vraie donnée de la liste.
-// Si toutes les prises du jour sont passées, affiche la première de demain.
-function nextReminderTime() {
-  const now = new Date();
-  const nowMins = now.getHours() * 60 + now.getMinutes();
-  const times = REMINDERS
-    .map((r) => /^(\d{1,2}):(\d{2})$/.exec(r.time))
-    .filter(Boolean)
-    .map((m) => parseInt(m[1], 10) * 60 + parseInt(m[2], 10))
-    .sort((a, b) => a - b);
-  if (!times.length) return '--:--';
-  const mins = times.find((t) => t >= nowMins) ?? times[0];
-  return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
-}
-
-// Rappels encore actifs maintenant (« Toute la journée » reste actif)
-function upcomingReminders() {
-  const now = new Date();
-  return REMINDERS.filter((r) => {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(r.time);
-    if (!m) return true;
-    const rh = parseInt(m[1], 10);
-    const rm = parseInt(m[2], 10);
-    return rh > now.getHours() || (rh === now.getHours() && rm >= now.getMinutes());
-  }).length;
-}
-
-const TIP_OF_DAY = {
   title: 'Conseil du jour',
   body: 'Praticien de 30 minutes de marche rapide aide à réduire le stress et à renforcer votre cœur. Bougez un peu chaque jour !',
   tag: 'Bien-être',
@@ -228,7 +232,7 @@ function DashboardHome({ userEmail, onNavigate }) {
         ))}
       </div>
 
-      {/* Rappels + conseil */}
+             {/* Rappels + conseil */}
       <div className="dh-grid">
         <div className="dh-card">
           <div className="dh-card-head">
@@ -236,16 +240,22 @@ function DashboardHome({ userEmail, onNavigate }) {
             <button type="button" className="dh-link" onClick={() => onNavigate('carnet')}>Tout voir</button>
           </div>
           <ul className="dh-reminders">
-            {REMINDERS.map((r) => (
-              <li key={r.id} className="dh-reminder">
-                <span className="dh-reminder-emoji">{r.emoji}</span>
-                <div className="dh-reminder-info">
-                  <strong>{r.name} <em>{r.dosage}</em></strong>
-                  <span>{r.time}</span>
-                </div>
-                <span className="dh-reminder-dot"></span>
+            {getActiveReminders().length === 0 ? (
+              <li className="dh-reminder-empty">
+                <span>Aucun rappel de prise pour le moment. Configurez-en un dans votre carnet de santé !</span>
               </li>
-            ))}
+            ) : (
+              getActiveReminders().map((r) => (
+                <li key={r.id} className="dh-reminder">
+                  <span className="dh-reminder-emoji">{r.emoji}</span>
+                  <div className="dh-reminder-info">
+                    <strong>{r.name} <em>{r.dosage}</em></strong>
+                    <span>{r.posologie}</span>
+                  </div>
+                  <span className="dh-reminder-dot"></span>
+                </li>
+              ))
+            )}
           </ul>
         </div>
 

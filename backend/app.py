@@ -1411,9 +1411,9 @@ def is_valid_email(email):
 @app.route('/api/register', methods=['POST', 'OPTIONS'])
 @limiter.limit("5 per minute")
 def register():
-    data = request.get_json()
-    email = data.get('email', '').strip().lower()
-    password = data.get('password', '')
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
     
     if not email or not password:
         return jsonify({"error": "Email et mot de passe requis"}), 400
@@ -1433,7 +1433,7 @@ def register():
     if not any(char in '!@#$%^&*()_+-=[]{}|;:,.<>?' for char in password):
         return jsonify({"error": "Le mot de passe doit contenir au moins un caractère spécial (!@#$%^&*...)"}), 400
     
-    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+        hashed_password = bcrypt.generate_password_hash(password, rounds=10).decode('utf-8')
     conn = None
     try:
         conn = get_db_connection()
@@ -1462,9 +1462,9 @@ def register():
 @app.route('/api/login', methods=['POST', 'OPTIONS'])
 @limiter.limit("10 per minute")
 def login():
-    data = request.get_json()
-    email = data.get('email', '').strip().lower()
-    password = data.get('password', '')
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
     
     if not email or not password:
         return jsonify({"error": "Veuillez entrer votre email et votre mot de passe."}), 400

@@ -76,9 +76,15 @@ const initialsOf = (name) =>
 
 function UserDashboard({ userEmail }) {
   const [activeView, setActiveView] = useState('accueil');
-  const [hydration, setHydration] = useState(1.2);
-  const [medications, setMedications] = useState(DEFAULT_MEDICATIONS);
-  const [antecedents, setAntecedents] = useState('Allergie aux pénicillines');
+    const [hydration, setHydration] = useState(() => {
+    try { return parseFloat(localStorage.getItem('santeHydration')) || 1.2; } catch { return 1.2; }
+  });
+  const [medications, setMedications] = useState(() => {
+    try {
+      const saved = localStorage.getItem('santeMedications');
+      return saved ? JSON.parse(saved) : DEFAULT_MEDICATIONS;
+    } catch { return DEFAULT_MEDICATIONS; }
+  });
   const [editingAntecedents, setEditingAntecedents] = useState(false);
   const [antecedentsDraft, setAntecedentsDraft] = useState('');
   const [profile, setProfile] = useState(() => {
@@ -101,12 +107,26 @@ function UserDashboard({ userEmail }) {
   });
   const [toast, setToast] = useState(null);
 
-  // Persistance du profil
+    // Persistance du profil
   useEffect(() => {
     try {
       localStorage.setItem('santeUserProfile', JSON.stringify(profile));
     } catch { /* noop */ }
   }, [profile]);
+
+  // Persistance des médicaments
+  useEffect(() => {
+    try {
+      localStorage.setItem('santeMedications', JSON.stringify(medications));
+    } catch { /* noop */ }
+  }, [medications]);
+
+  // Persistance de l'hydratation
+  useEffect(() => {
+    try {
+      localStorage.setItem('santeHydration', String(hydration));
+    } catch { /* noop */ }
+  }, [hydration]);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
